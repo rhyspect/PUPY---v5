@@ -1,9 +1,9 @@
-import express, { Express, Request, Response } from 'express';
+﻿import express, { type Express, type Request, type Response } from 'express';
 import cors from 'cors';
+import path from 'path';
 import config from './config/index.js';
 import errorHandler, { corsOptions } from './middleware/errorHandler.js';
 
-// 路由导入
 import authRoutes from './routes/auth.js';
 import petRoutes from './routes/pets.js';
 import matchRoutes from './routes/matches.js';
@@ -12,35 +12,39 @@ import diaryRoutes from './routes/diaries.js';
 import marketRoutes from './routes/market.js';
 import breedingRoutes from './routes/breeding.js';
 import aiRoutes from './routes/ai.js';
+import adminRoutes from './routes/admin.js';
 
 const app: Express = express();
 
-// 中间件
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use((req, res, next) => {
+  const acceptLanguage = req.headers['accept-language'];
+  const language = typeof acceptLanguage === 'string' && acceptLanguage.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN';
+  res.setHeader('Content-Language', language);
+  next();
+});
+app.use('/assets', express.static(path.resolve(process.cwd(), 'src/public/assets')));
 
-// 健康检查
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'PUPY后端服务正常运行',
+    message: 'PUPY 后端运行正常。',
     timestamp: new Date().toISOString(),
     environment: config.nodeEnv,
   });
 });
 
-// API 版本信息
-app.get('/api/version', (req: Request, res: Response) => {
+app.get('/api/version', (_req: Request, res: Response) => {
   res.json({
     success: true,
-    version: '1.0.0',
-    name: 'PUPY (爪住) Backend API',
-    description: '宠物社交平台 | Pet Social Platform',
+    version: '1.2.0',
+    name: 'PUPY 后端接口',
+    description: '宠物社交与数据管理平台后端',
   });
 });
 
-// 路由挂载
 app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/matches', matchRoutes);
@@ -49,27 +53,25 @@ app.use('/api/diaries', diaryRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/breeding', breedingRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminRoutes);
 
-// 404 处理
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    error: '端点不存在',
+    error: '接口不存在。',
     code: 404,
     path: req.path,
   });
 });
 
-// 错误处理中间件
 app.use(errorHandler);
 
-// 启动服务器
 const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`✨ PUPY 后端服务启动成功！`);
-  console.log(`🚀 服务器运行在: http://localhost:${PORT}`);
-  console.log(`🌍 环境: ${config.nodeEnv}`);
-  console.log(`📝 API版本: v1.0.0`);
+  console.log(`PUPY backend started on http://localhost:${PORT}`);
+  console.log(`Admin panel: http://localhost:${PORT}/api/admin/panel`);
+  console.log(`Environment: ${config.nodeEnv}`);
+  console.log(`Admin emails configured: ${config.admin.allowedEmails.length}`);
 });
 
 export default app;

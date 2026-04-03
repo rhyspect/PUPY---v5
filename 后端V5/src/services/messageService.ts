@@ -1,15 +1,10 @@
-import { supabase } from '../config/supabase.js';
-import { ChatRoom, Message, ApiResponse, PaginatedResponse } from '../types/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../config/supabase.js';
+import type { ApiResponse, ChatRoom, Message, PaginatedResponse } from '../types/index.js';
 
 export class MessageService {
-  // 获取或创建聊天室
-  static async getOrCreateChatRoom(
-    userAId: string,
-    userBId: string,
-  ): Promise<ApiResponse<ChatRoom>> {
+  static async getOrCreateChatRoom(userAId: string, userBId: string): Promise<ApiResponse<ChatRoom>> {
     try {
-      // 检查是否存在聊天室
       const { data: existing } = await supabase
         .from('chat_rooms')
         .select('*')
@@ -21,20 +16,17 @@ export class MessageService {
       if (existing && existing.length > 0) {
         return {
           success: true,
-          data: existing[0],
-          message: '获取聊天室成功',
+          data: existing[0] as ChatRoom,
+          message: 'Chat room loaded.',
         };
       }
 
-      // 创建新聊天室
       const chatRoomId = uuidv4();
-      const { error } = await supabase
-        .from('chat_rooms')
-        .insert({
-          id: chatRoomId,
-          user_a_id: userAId,
-          user_b_id: userBId,
-        });
+      const { error } = await supabase.from('chat_rooms').insert({
+        id: chatRoomId,
+        user_a_id: userAId,
+        user_b_id: userBId,
+      });
 
       if (error) throw error;
 
@@ -42,12 +34,12 @@ export class MessageService {
       return {
         success: true,
         data: chatRoom as ChatRoom,
-        message: '聊天室创建成功',
+        message: 'Chat room created.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '操作失败',
+        error: error.message || 'Failed to access chat room.',
         code: 500,
       };
     }
@@ -55,23 +47,35 @@ export class MessageService {
 
   static async getChatRoomById(chatRoomId: string): Promise<ChatRoom | null> {
     try {
+      const { data, error } = await supabase.from('chat_rooms').select('*').eq('id', chatRoomId).limit(1);
+      if (error || !data || data.length === 0) {
+        return null;
+      }
+      return data[0] as ChatRoom;
+    } catch {
+      return null;
+    }
+  }
+
+  static async getChatRoomForUser(chatRoomId: string, userId: string): Promise<ChatRoom | null> {
+    try {
       const { data, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('id', chatRoomId)
+        .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
         .limit(1);
 
       if (error || !data || data.length === 0) {
         return null;
       }
 
-      return data[0];
+      return data[0] as ChatRoom;
     } catch {
       return null;
     }
   }
 
-  // 发送消息
   static async sendMessage(
     chatRoomId: string,
     senderId: string,
@@ -79,38 +83,41 @@ export class MessageService {
     content: string,
   ): Promise<ApiResponse<Message>> {
     try {
+      const chatRoom = await this.getChatRoomForUser(chatRoomId, senderId);
+      if (!chatRoom) {
+        return {
+          success: false,
+          error: 'Chat room not found or not owned by current user.',
+          code: 403,
+        };
+      }
+
       const messageId = uuidv4();
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          id: messageId,
-          chat_id: chatRoomId,
-          sender_id: senderId,
-          receiver_id: receiverId,
-          content,
-        });
+      const { error } = await supabase.from('messages').insert({
+        id: messageId,
+        chat_id: chatRoomId,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content,
+      });
 
       if (error) throw error;
 
-      // 更新聊天室的最后消息
-      await supabase
-        .from('chat_rooms')
-        .update({
-          last_message: content,
-          last_message_time: new Date().toISOString(),
-        })
-        .eq('id', chatRoomId);
+      await supabase.from('chat_rooms').update({
+        last_message: content,
+        last_message_time: new Date().toISOString(),
+      }).eq('id', chatRoomId);
 
       const message = await this.getMessageById(messageId);
       return {
         success: true,
         data: message as Message,
-        message: '消息发送成功',
+        message: 'Message sent.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '发送失败',
+        error: error.message || 'Failed to send message.',
         code: 500,
       };
     }
@@ -118,31 +125,34 @@ export class MessageService {
 
   static async getMessageById(messageId: string): Promise<Message | null> {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('id', messageId)
-        .limit(1);
-
+      const { data, error } = await supabase.from('messages').select('*').eq('id', messageId).limit(1);
       if (error || !data || data.length === 0) {
         return null;
       }
-
-      return data[0];
+      return data[0] as Message;
     } catch {
       return null;
     }
   }
 
-  // 获取聊天记录
   static async getChatMessages(
+    userId: string,
     chatRoomId: string,
-    page: number = 1,
-    limit: number = 50,
+    page = 1,
+    limit = 50,
   ): Promise<PaginatedResponse<Message>> {
     try {
-      const offset = (page - 1) * limit;
+      const chatRoom = await this.getChatRoomForUser(chatRoomId, userId);
+      if (!chatRoom) {
+        return {
+          success: false,
+          data: [],
+          pagination: { total: 0, page: 1, limit, total_pages: 0 },
+          error: 'Chat room not found or not owned by current user.',
+        };
+      }
 
+      const offset = (page - 1) * limit;
       const [messagesRes, countRes] = await Promise.all([
         supabase
           .from('messages')
@@ -157,29 +167,27 @@ export class MessageService {
       ]);
 
       const total = countRes.count || 0;
-
       return {
         success: true,
-        data: messagesRes.data || [],
+        data: (messagesRes.data || []) as Message[],
         pagination: {
           total,
           page,
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: 'Messages loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load messages.',
       };
     }
   }
 
-  // 标记消息为已读
   static async markMessageAsRead(messageId: string): Promise<ApiResponse<Message>> {
     try {
       const { data, error } = await supabase
@@ -190,36 +198,30 @@ export class MessageService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('标记失败');
+        throw error || new Error('Failed to mark message as read.');
       }
 
       return {
         success: true,
-        data: data[0],
-        message: '标记成功',
+        data: data[0] as Message,
+        message: 'Message marked as read.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '标记失败',
+        error: error.message || 'Failed to mark message as read.',
         code: 500,
       };
     }
   }
 
-  // 获取用户的聊天室列表
   static async getUserChatRooms(
     userId: string,
-    page: number = 1,
-    limit: number = 20,
-  ): Promise<
-    PaginatedResponse<
-      ChatRoom & { other_user: any; unread_count: number; last_message: string | null }
-    >
-  > {
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<ChatRoom & { other_user: any; unread_count: number }>> {
     try {
       const offset = (page - 1) * limit;
-
       const [chatRoomsRes, countRes] = await Promise.all([
         supabase
           .from('chat_rooms')
@@ -240,8 +242,6 @@ export class MessageService {
       const enrichedChatRooms = await Promise.all(
         (chatRoomsRes.data || []).map(async (room: any) => {
           const otherUser = room.user_a_id === userId ? room.user_b : room.user_a;
-
-          // 获取未读消息数
           const { count: unreadCount } = await supabase
             .from('messages')
             .select('id', { count: 'exact', head: true })
@@ -258,7 +258,6 @@ export class MessageService {
       );
 
       const total = countRes.count || 0;
-
       return {
         success: true,
         data: enrichedChatRooms,
@@ -268,14 +267,14 @@ export class MessageService {
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: 'Chat rooms loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load chat rooms.',
       };
     }
   }

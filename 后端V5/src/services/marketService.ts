@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase.js';
+﻿import { supabase } from '../config/supabase.js';
 import { MarketProduct, ApiResponse, PaginatedResponse } from '../types/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -33,12 +33,12 @@ export class MarketService {
       return {
         success: true,
         data: product as MarketProduct,
-        message: '商品创建成功',
+        message: 'Product created successfully.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '创建失败',
+        error: error.message || 'Failed to create product.',
         code: 500,
       };
     }
@@ -96,14 +96,14 @@ export class MarketService {
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: 'Products loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load products.',
       };
     }
   }
@@ -142,14 +142,14 @@ export class MarketService {
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: 'Products loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load products.',
       };
     }
   }
@@ -169,12 +169,12 @@ export class MarketService {
       return {
         success: true,
         data: data || [],
-        message: '获取成功',
+        message: 'Seller products loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load seller products.',
         code: 500,
       };
     }
@@ -193,18 +193,18 @@ export class MarketService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('更新失败');
+        throw error || new Error('Failed to update product.');
       }
 
       return {
         success: true,
         data: data[0],
-        message: '更新成功',
+        message: 'Product updated.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '更新失败',
+        error: error.message || 'Failed to update product.',
         code: 500,
       };
     }
@@ -222,18 +222,17 @@ export class MarketService {
       return {
         success: true,
         data: null,
-        message: '删除成功',
+        message: 'Product deleted.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '删除失败',
+        error: error.message || 'Failed to delete product.',
         code: 500,
       };
     }
   }
 
-  // 配种相关
   static async getBreedingMarket(
     page: number = 1,
     limit: number = 20,
@@ -267,14 +266,55 @@ export class MarketService {
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: 'Breeding market loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load breeding market.',
+      };
+    }
+  }
+
+  static async getFeed(
+    category?: string,
+    type?: string,
+    limit: number = 20,
+  ): Promise<ApiResponse<(MarketProduct & { seller: any; pet: any })[]>> {
+    try {
+      const query = supabase
+        .from('market_products')
+        .select('*, seller:users(*), pet:pets(*)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (category) {
+        query.eq('category', category);
+      }
+
+      if (type) {
+        query.eq('type', type as MarketProduct['type']);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        message: 'Market feed loaded.',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to load market feed.',
+        code: 500,
       };
     }
   }

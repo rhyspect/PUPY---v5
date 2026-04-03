@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import AuthService from '../services/authService.js';
-import { JWTPayload } from '../types/index.js';
+import type { JWTPayload } from '../types/index.js';
 
 export interface AuthRequest extends Request {
   user?: JWTPayload;
@@ -8,12 +8,13 @@ export interface AuthRequest extends Request {
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.headers.authorization?.split('Bearer ')[1];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: '未提供认证令牌',
+        error: 'Authentication token is missing.',
         code: 401,
       });
     }
@@ -22,17 +23,17 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     if (!decoded) {
       return res.status(401).json({
         success: false,
-        error: '无效的令牌',
+        error: 'Authentication token is invalid.',
         code: 401,
       });
     }
 
     req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({
       success: false,
-      error: '认证失败',
+      error: 'Authentication failed.',
       code: 401,
     });
   }

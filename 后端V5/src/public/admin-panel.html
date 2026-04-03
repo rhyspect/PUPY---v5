@@ -1,0 +1,366 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PUPY 后台数据管理面板</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f3;
+      --card: #ffffff;
+      --text: #17221b;
+      --muted: #688070;
+      --line: #dde6dd;
+      --brand: #1f8f63;
+      --brand-soft: #e8f6ef;
+      --warn: #b45309;
+      --danger: #dc2626;
+      --shadow: 0 20px 50px rgba(18, 33, 24, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top right, #edf8f1 0, transparent 30%), var(--bg);
+      color: var(--text);
+    }
+    .shell { max-width: 1400px; margin: 0 auto; padding: 32px; }
+    .hero { display:flex; justify-content:space-between; gap:24px; align-items:flex-start; margin-bottom:24px; }
+    .hero h1 { margin:0; font-size:40px; line-height:1; }
+    .hero p { margin:10px 0 0; color: var(--muted); }
+    .card { background: var(--card); border:1px solid var(--line); border-radius: 28px; box-shadow: var(--shadow); }
+    .login-card, .toolbar, .section { padding: 24px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .toolbar .actions, .toolbar .filters { display:flex; gap:12px; flex-wrap:wrap; }
+    input, button, select {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 14px;
+      background:#fff;
+    }
+    input, select { min-width: 180px; }
+    button { cursor: pointer; font-weight: 700; }
+    .primary { background: var(--brand); color:#fff; border-color: var(--brand); }
+    .ghost { background:#fff; color:var(--text); }
+    .stats { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:16px; margin-bottom:20px; }
+    .stat { padding:20px; }
+    .stat small { color: var(--muted); display:block; margin-bottom:8px; }
+    .stat strong { font-size: 32px; }
+    .tabs { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+    .tab.active { background: var(--brand); color:#fff; border-color: var(--brand); }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); vertical-align: top; font-size:14px; }
+    th { color: var(--muted); font-size:12px; text-transform: uppercase; letter-spacing: .08em; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+    .pill.ok { background:#e8f6ef; color: var(--brand); }
+    .pill.pending { background:#fff7ed; color: var(--warn); }
+    .stack { display:grid; gap:16px; }
+    .muted { color: var(--muted); }
+    .hidden { display:none; }
+    .two-col { display:grid; grid-template-columns: 1.3fr .9fr; gap:20px; }
+    .subgrid { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+    .toast { position:fixed; right:24px; bottom:24px; background:#15231a; color:#fff; padding:14px 18px; border-radius:16px; box-shadow: var(--shadow); opacity:0; transform: translateY(10px); transition:.2s; }
+    .toast.show { opacity:1; transform: translateY(0); }
+    @media (max-width: 980px) {
+      .shell { padding: 16px; }
+      .stats, .two-col, .subgrid { grid-template-columns: 1fr; }
+      .hero { flex-direction: column; }
+      input, select { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <h1>PUPY 后台数据管理面板</h1>
+        <p>独立于 App 的运营与审核入口。可查看应用核心数据，并审核用户资料。</p>
+      </div>
+      <div class="card login-card" style="min-width:320px;">
+        <div style="font-weight:800; margin-bottom:12px;">管理员登录</div>
+        <div class="stack">
+          <input id="email" placeholder="管理员邮箱" value="rhyssvv@gmail.com" />
+          <input id="password" type="password" placeholder="密码" value="123456" />
+          <button id="loginBtn" class="primary">登录后台</button>
+          <div id="loginStatus" class="muted">登录后可直接查看和审核数据。</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
+      <div class="card toolbar">
+        <div class="filters">
+          <button class="tab active" data-tab="overview">总览</button>
+          <button class="tab" data-tab="users">用户审核</button>
+          <button class="tab" data-tab="pets">宠物资料</button>
+          <button class="tab" data-tab="market">市场数据</button>
+          <button class="tab" data-tab="breeding">繁育请求</button>
+        </div>
+        <div class="actions">
+          <input id="keyword" placeholder="搜索用户名或邮箱" />
+          <button id="refreshBtn" class="ghost">刷新数据</button>
+          <button id="logoutBtn" class="ghost">退出</button>
+        </div>
+      </div>
+
+      <section id="overviewTab" class="tab-panel">
+        <div id="stats" class="stats"></div>
+        <div class="two-col">
+          <div class="card section">
+            <div style="font-weight:800; margin-bottom:16px;">最近注册用户</div>
+            <div id="recentUsers"></div>
+          </div>
+          <div class="stack">
+            <div class="card section">
+              <div style="font-weight:800; margin-bottom:16px;">最近宠物档案</div>
+              <div id="recentPets"></div>
+            </div>
+            <div class="card section">
+              <div style="font-weight:800; margin-bottom:16px;">最近消息</div>
+              <div id="recentMessages"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="usersTab" class="tab-panel hidden">
+        <div class="card section">
+          <div style="font-weight:800; margin-bottom:16px;">用户审核列表</div>
+          <div id="usersTable"></div>
+        </div>
+      </section>
+
+      <section id="petsTab" class="tab-panel hidden">
+        <div class="card section">
+          <div style="font-weight:800; margin-bottom:16px;">宠物资料</div>
+          <div id="petsTable"></div>
+        </div>
+      </section>
+
+      <section id="marketTab" class="tab-panel hidden">
+        <div class="card section">
+          <div style="font-weight:800; margin-bottom:16px;">市场数据</div>
+          <div id="marketTable"></div>
+        </div>
+      </section>
+
+      <section id="breedingTab" class="tab-panel hidden">
+        <div class="card section">
+          <div style="font-weight:800; margin-bottom:16px;">繁育请求</div>
+          <div id="breedingTable"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem('pupy_admin_token') || '',
+      tab: 'overview',
+      keyword: '',
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function toast(message) {
+      const node = $('toast');
+      node.textContent = message;
+      node.classList.add('show');
+      window.clearTimeout(window.__toastTimer);
+      window.__toastTimer = window.setTimeout(() => node.classList.remove('show'), 2400);
+    }
+
+    async function request(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Language': 'zh-CN',
+          ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || '请求失败');
+      return json;
+    }
+
+    async function login() {
+      const email = $('email').value.trim();
+      const password = $('password').value.trim();
+      $('loginStatus').textContent = '正在登录...';
+      try {
+        const result = await request('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        state.token = result.data.token;
+        localStorage.setItem('pupy_admin_token', state.token);
+        $('loginStatus').textContent = '登录成功，正在加载数据。';
+        $('app').classList.remove('hidden');
+        await loadCurrentTab();
+        toast('后台登录成功');
+      } catch (error) {
+        $('loginStatus').textContent = error.message;
+      }
+    }
+
+    function renderList(containerId, rows, formatter) {
+      const container = $(containerId);
+      container.innerHTML = rows.length
+        ? rows.map(formatter).join('')
+        : '<div class="muted">暂无数据</div>';
+    }
+
+    function renderTable(containerId, columns, rows) {
+      const container = $(containerId);
+      if (!rows.length) {
+        container.innerHTML = '<div class="muted">暂无数据</div>';
+        return;
+      }
+      container.innerHTML = `
+        <table>
+          <thead><tr>${columns.map((column) => `<th>${column.label}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map((row) => `<tr>${columns.map((column) => `<td>${column.render(row)}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function loadOverview() {
+      const result = await request('/api/admin/overview');
+      const stats = result.data.stats;
+      $('stats').innerHTML = [
+        ['用户', stats.users],
+        ['宠物', stats.pets],
+        ['消息', stats.messages],
+        ['商品', stats.products],
+      ].map(([label, value]) => `<div class="card stat"><small>${label}</small><strong>${value}</strong></div>`).join('');
+
+      renderList('recentUsers', result.data.recentUsers, (user) => `
+        <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+          <div style="font-weight:700;">${user.username}</div>
+          <div class="muted">${user.email}</div>
+          <div class="muted">${user.resident_city || '未填写城市'} · ${user.is_verified ? '已审核' : '待审核'}</div>
+        </div>
+      `);
+
+      renderList('recentPets', result.data.recentPets, (pet) => `
+        <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+          <div style="font-weight:700;">${pet.name}</div>
+          <div class="muted">${pet.type || '未填写类型'} · ${pet.gender || '未填写性别'}</div>
+          <div class="muted">主人：${pet.owner?.username || '未知'}</div>
+        </div>
+      `);
+
+      renderList('recentMessages', result.data.recentMessages, (message) => `
+        <div style="padding:12px 0; border-bottom:1px solid var(--line);">
+          <div style="font-weight:700;">${message.sender?.username || '未知'} → ${message.receiver?.username || '未知'}</div>
+          <div class="muted">${message.content}</div>
+        </div>
+      `);
+    }
+
+    async function loadUsers() {
+      const result = await request(`/api/admin/users?page=1&limit=30&keyword=${encodeURIComponent(state.keyword)}`);
+      renderTable('usersTable', [
+        { label: '用户', render: (user) => `<strong>${user.username}</strong><div class="muted">${user.email}</div>` },
+        { label: '城市 / MBTI', render: (user) => `${user.resident_city || '未填写'}<div class="muted">${user.mbti || '未填写'}</div>` },
+        { label: '状态', render: (user) => `<span class="pill ${user.is_verified ? 'ok' : 'pending'}">${user.is_verified ? '已审核' : '待审核'}</span>` },
+        { label: '操作', render: (user) => `<button class="${user.is_verified ? 'ghost' : 'primary'}" onclick="toggleVerify('${user.id}', ${!user.is_verified})">${user.is_verified ? '取消通过' : '审核通过'}</button>` },
+      ], result.data || []);
+    }
+
+    async function loadPets() {
+      const result = await request('/api/admin/pets?page=1&limit=30');
+      renderTable('petsTable', [
+        { label: '宠物', render: (pet) => `<strong>${pet.name}</strong><div class="muted">${pet.type || '未填写类型'}</div>` },
+        { label: '主人', render: (pet) => `${pet.owner?.username || '未知'}<div class="muted">${pet.owner?.email || ''}</div>` },
+        { label: '健康', render: (pet) => `${pet.health_status || '未填写'}<div class="muted">疫苗：${pet.vaccinated ? '已接种' : '未接种'}</div>` },
+        { label: '分身', render: (pet) => `<span class="pill ${pet.is_digital_twin ? 'ok' : 'pending'}">${pet.is_digital_twin ? '已生成' : '未生成'}</span>` },
+      ], result.data || []);
+    }
+
+    async function loadMarket() {
+      const result = await request('/api/admin/market?page=1&limit=30');
+      renderTable('marketTable', [
+        { label: '标题', render: (item) => `<strong>${item.title}</strong><div class="muted">${item.category || item.type || '未分类'}</div>` },
+        { label: '卖家', render: (item) => `${item.seller?.username || '未知'}<div class="muted">${item.seller?.email || ''}</div>` },
+        { label: '宠物', render: (item) => `${item.pet?.name || '未关联'}<div class="muted">${item.pet?.type || ''}</div>` },
+        { label: '价格 / 状态', render: (item) => `${item.price ? `¥${item.price}` : '待定'}<div class="muted">${item.status || 'active'}</div>` },
+      ], result.data || []);
+    }
+
+    async function loadBreeding() {
+      const result = await request('/api/admin/breeding?page=1&limit=30');
+      renderTable('breedingTable', [
+        { label: '发起方', render: (item) => `${item.sender?.username || '未知'}<div class="muted">${item.sender_pet?.name || '未关联宠物'}</div>` },
+        { label: '接收方', render: (item) => `${item.receiver?.username || '未知'}<div class="muted">${item.receiver_pet?.name || '未关联宠物'}</div>` },
+        { label: '状态', render: (item) => `<span class="pill ${item.status === 'accepted' || item.status === 'completed' ? 'ok' : 'pending'}">${item.status || 'pending'}</span>` },
+        { label: '备注', render: (item) => item.notes || '无备注' },
+      ], result.data || []);
+    }
+
+    async function loadCurrentTab() {
+      if (state.tab === 'overview') return loadOverview();
+      if (state.tab === 'users') return loadUsers();
+      if (state.tab === 'pets') return loadPets();
+      if (state.tab === 'market') return loadMarket();
+      return loadBreeding();
+    }
+
+    async function toggleVerify(userId, nextValue) {
+      try {
+        await request(`/api/admin/users/${userId}/verification`, {
+          method: 'PATCH',
+          body: JSON.stringify({ is_verified: nextValue }),
+        });
+        toast(nextValue ? '审核通过已更新' : '审核状态已取消');
+        await loadUsers();
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+
+    window.toggleVerify = toggleVerify;
+
+    document.querySelectorAll('.tab').forEach((button) => {
+      button.addEventListener('click', async () => {
+        document.querySelectorAll('.tab').forEach((node) => node.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach((node) => node.classList.add('hidden'));
+        button.classList.add('active');
+        state.tab = button.dataset.tab;
+        $(`${state.tab}Tab`).classList.remove('hidden');
+        await loadCurrentTab();
+      });
+    });
+
+    $('loginBtn').addEventListener('click', login);
+    $('refreshBtn').addEventListener('click', loadCurrentTab);
+    $('keyword').addEventListener('input', async (event) => {
+      state.keyword = event.target.value.trim();
+      if (state.tab === 'users') {
+        await loadUsers();
+      }
+    });
+    $('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('pupy_admin_token');
+      state.token = '';
+      $('app').classList.add('hidden');
+      $('loginStatus').textContent = '已退出后台。';
+      toast('已退出');
+    });
+
+    if (state.token) {
+      $('app').classList.remove('hidden');
+      loadCurrentTab().catch((error) => {
+        $('loginStatus').textContent = error.message;
+      });
+    }
+  </script>
+</body>
+</html>

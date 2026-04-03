@@ -1,19 +1,17 @@
+﻿import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../config/supabase.js';
-import { Pet, CreatePetRequest, ApiResponse } from '../types/index.js';
-import { v4 as uuidv4 } from 'uuid';
+import type { ApiResponse, CreatePetRequest, Pet } from '../types/index.js';
 
 export class PetService {
   static async createPet(userId: string, data: CreatePetRequest): Promise<ApiResponse<Pet>> {
     try {
       const petId = uuidv4();
-      const { error } = await supabase
-        .from('pets')
-        .insert({
-          id: petId,
-          user_id: userId,
-          ...data,
-          is_digital_twin: false,
-        });
+      const { error } = await supabase.from('pets').insert({
+        id: petId,
+        user_id: userId,
+        ...data,
+        is_digital_twin: false,
+      });
 
       if (error) {
         throw error;
@@ -23,12 +21,12 @@ export class PetService {
       return {
         success: true,
         data: pet as Pet,
-        message: '宠物创建成功',
+        message: 'Pet created successfully.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '创建失败',
+        error: error.message || 'Failed to create pet.',
         code: 500,
       };
     }
@@ -36,17 +34,11 @@ export class PetService {
 
   static async getPetById(petId: string): Promise<Pet | null> {
     try {
-      const { data, error } = await supabase
-        .from('pets')
-        .select('*')
-        .eq('id', petId)
-        .limit(1);
-
+      const { data, error } = await supabase.from('pets').select('*').eq('id', petId).limit(1);
       if (error || !data || data.length === 0) {
         return null;
       }
-
-      return data[0];
+      return data[0] as Pet;
     } catch {
       return null;
     }
@@ -54,62 +46,56 @@ export class PetService {
 
   static async getPetsByUserId(userId: string): Promise<ApiResponse<Pet[]>> {
     try {
-      const { data, error } = await supabase
-        .from('pets')
-        .select('*')
-        .eq('user_id', userId);
-
+      const { data, error } = await supabase.from('pets').select('*').eq('user_id', userId);
       if (error) {
         throw error;
       }
 
       return {
         success: true,
-        data: data || [],
-        message: '获取成功',
+        data: (data || []) as Pet[],
+        message: 'Pets loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load pets.',
         code: 500,
       };
     }
   }
 
-  static async updatePet(petId: string, updates: Partial<Pet>): Promise<ApiResponse<Pet>> {
+  static async updatePet(userId: string, petId: string, updates: Partial<Pet>): Promise<ApiResponse<Pet>> {
     try {
       const { data, error } = await supabase
         .from('pets')
         .update(updates)
         .eq('id', petId)
+        .eq('user_id', userId)
         .select('*')
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('更新失败');
+        throw error || new Error('Pet not found or no permission.');
       }
 
       return {
         success: true,
-        data: data[0],
-        message: '更新成功',
+        data: data[0] as Pet,
+        message: 'Pet updated.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '更新失败',
+        error: error.message || 'Failed to update pet.',
         code: 500,
       };
     }
   }
 
-  static async deletePet(petId: string): Promise<ApiResponse<null>> {
+  static async deletePet(userId: string, petId: string): Promise<ApiResponse<null>> {
     try {
-      const { error } = await supabase
-        .from('pets')
-        .delete()
-        .eq('id', petId);
+      const { error } = await supabase.from('pets').delete().eq('id', petId).eq('user_id', userId);
 
       if (error) {
         throw error;
@@ -118,19 +104,19 @@ export class PetService {
       return {
         success: true,
         data: null,
-        message: '删除成功',
+        message: 'Pet deleted.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '删除失败',
+        error: error.message || 'Failed to delete pet.',
         code: 500,
       };
     }
   }
 
-  // 创建数字分身
   static async createDigitalTwin(
+    userId: string,
     petId: string,
     modelUrl: string,
     aiPersonality: string,
@@ -149,40 +135,41 @@ export class PetService {
           digital_twin_data: digitalTwinData,
         })
         .eq('id', petId)
+        .eq('user_id', userId)
         .select('*')
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('创建数字分身失败');
+        throw error || new Error('Pet not found or no permission.');
       }
 
       return {
         success: true,
-        data: data[0],
-        message: '数字分身创建成功',
+        data: data[0] as Pet,
+        message: 'Digital twin created.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '创建失败',
+        error: error.message || 'Failed to create digital twin.',
         code: 500,
       };
     }
   }
 
-  // 获取可用配种宠物列表
   static async getBreedingPets(
     petType: string,
     gender: string,
-    limit: number = 20,
-    offset: number = 0,
+    limit = 20,
+    offset = 0,
   ): Promise<ApiResponse<Pet[]>> {
     try {
+      const targetGender = gender === '公' ? '母' : '公';
       const { data, error } = await supabase
         .from('pets')
-        .select('*, users!pets_user_id_fkey(id, username, avatar_url)')
+        .select('*, owner:users!pets_user_id_fkey(id, username, avatar_url)')
         .eq('type', petType)
-        .eq('gender', gender === '公' ? '母' : '公')
+        .eq('gender', targetGender)
         .eq('health_status', 'healthy')
         .eq('vaccinated', true)
         .range(offset, offset + limit - 1);
@@ -193,13 +180,73 @@ export class PetService {
 
       return {
         success: true,
-        data: data || [],
-        message: '获取成功',
+        data: (data || []) as Pet[],
+        message: 'Breeding pets loaded.',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '获取失败',
+        error: error.message || 'Failed to load breeding pets.',
+        code: 500,
+      };
+    }
+  }
+
+  static async getDiscoveryFeed(
+    userId: string,
+    petType?: string,
+    petGender?: string,
+    limit = 20,
+  ): Promise<ApiResponse<any[]>> {
+    try {
+      const query = supabase
+        .from('pets')
+        .select(
+          `*,
+          owner:users!pets_user_id_fkey(
+            id,
+            username,
+            age,
+            gender,
+            resident_city,
+            frequent_cities,
+            hobbies,
+            mbti,
+            signature,
+            avatar_url,
+            photos,
+            bio,
+            is_verified
+          )`,
+        )
+        .neq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (petType) {
+        query.eq('type', petType);
+      }
+
+      if (petGender) {
+        const targetGender = petGender === '公' ? '母' : petGender === '母' ? '公' : petGender;
+        query.eq('gender', targetGender);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        success: true,
+        data: data || [],
+        message: 'Discovery feed loaded.',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to load discovery feed.',
         code: 500,
       };
     }

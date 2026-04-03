@@ -1,24 +1,16 @@
-// Supabase SQL Schema 数据库模式
-// 在 Supabase 控制面板中执行此 SQL
-
-const schema = `
--- 允许匿名用户访问的列
-
--- 启用 UUID 数据库扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 用户表 - Users Table
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   username VARCHAR(255) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   age INTEGER,
-  gender VARCHAR(10),
+  gender VARCHAR(32),
   resident_city VARCHAR(255),
-  frequent_cities TEXT[],
-  hobbies TEXT[],
-  mbti VARCHAR(10),
+  frequent_cities TEXT[] DEFAULT '{}',
+  hobbies TEXT[] DEFAULT '{}',
+  mbti VARCHAR(16),
   signature TEXT,
   avatar_url TEXT,
   bio TEXT,
@@ -29,18 +21,17 @@ CREATE TABLE public.users (
   last_login TIMESTAMP
 );
 
--- 宠物表 - Pets Table
-CREATE TABLE public.pets (
+CREATE TABLE IF NOT EXISTS public.pets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   type VARCHAR(255),
-  gender VARCHAR(10),
+  gender VARCHAR(32),
   personality VARCHAR(255),
   breed VARCHAR(255),
   age INTEGER,
   weight DECIMAL(5,2),
-  images TEXT[],
+  images TEXT[] DEFAULT '{}',
   bio TEXT,
   is_digital_twin BOOLEAN DEFAULT FALSE,
   digital_twin_data JSONB,
@@ -51,8 +42,7 @@ CREATE TABLE public.pets (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 匹配表 - Matches Table
-CREATE TABLE public.matches (
+CREATE TABLE IF NOT EXISTS public.matches (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_a_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   user_b_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -64,8 +54,7 @@ CREATE TABLE public.matches (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 聊天室表 - Chat Rooms Table
-CREATE TABLE public.chat_rooms (
+CREATE TABLE IF NOT EXISTS public.chat_rooms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_a_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   user_b_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -76,8 +65,7 @@ CREATE TABLE public.chat_rooms (
   UNIQUE(user_a_id, user_b_id)
 );
 
--- 消息表 - Messages Table
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   chat_id UUID NOT NULL REFERENCES public.chat_rooms(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -88,16 +76,15 @@ CREATE TABLE public.messages (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 日记表 - Diaries Table
-CREATE TABLE public.diaries (
+CREATE TABLE IF NOT EXISTS public.diaries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
   title VARCHAR(500) NOT NULL,
   content TEXT NOT NULL,
-  images TEXT[],
+  images TEXT[] DEFAULT '{}',
   mood VARCHAR(50),
-  tags TEXT[],
+  tags TEXT[] DEFAULT '{}',
   is_public BOOLEAN DEFAULT FALSE,
   likes_count INTEGER DEFAULT 0,
   comments_count INTEGER DEFAULT 0,
@@ -105,8 +92,7 @@ CREATE TABLE public.diaries (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 评论表 - Comments Table
-CREATE TABLE public.comments (
+CREATE TABLE IF NOT EXISTS public.comments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   diary_id UUID NOT NULL REFERENCES public.diaries(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -115,8 +101,7 @@ CREATE TABLE public.comments (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 点赞表 - Likes Table
-CREATE TABLE public.likes (
+CREATE TABLE IF NOT EXISTS public.likes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   diary_id UUID NOT NULL REFERENCES public.diaries(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -124,8 +109,7 @@ CREATE TABLE public.likes (
   UNIQUE(diary_id, user_id)
 );
 
--- 市集商品表 - Market Products Table
-CREATE TABLE public.market_products (
+CREATE TABLE IF NOT EXISTS public.market_products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   seller_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   pet_id UUID REFERENCES public.pets(id) ON DELETE SET NULL,
@@ -133,7 +117,7 @@ CREATE TABLE public.market_products (
   description TEXT,
   category VARCHAR(255),
   price DECIMAL(10,2),
-  images TEXT[],
+  images TEXT[] DEFAULT '{}',
   status VARCHAR(50) DEFAULT 'active',
   type VARCHAR(50),
   requirements TEXT,
@@ -141,8 +125,7 @@ CREATE TABLE public.market_products (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 配种请求表 - Breeding Requests Table
-CREATE TABLE public.breeding_requests (
+CREATE TABLE IF NOT EXISTS public.breeding_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   sender_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   sender_pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
@@ -154,8 +137,7 @@ CREATE TABLE public.breeding_requests (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 通知表 - Notifications Table
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   message TEXT NOT NULL,
@@ -165,8 +147,7 @@ CREATE TABLE public.notifications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 祈祷记录表 - Prayer Records Table
-CREATE TABLE public.prayer_records (
+CREATE TABLE IF NOT EXISTS public.prayer_records (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
@@ -176,8 +157,7 @@ CREATE TABLE public.prayer_records (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 用户统计表 - User Stats Table
-CREATE TABLE public.user_stats (
+CREATE TABLE IF NOT EXISTS public.user_stats (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE,
   level INTEGER DEFAULT 1,
@@ -189,63 +169,46 @@ CREATE TABLE public.user_stats (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 创建索引提高性能 - Create Indexes for Performance
-CREATE INDEX idx_pets_user_id ON public.pets(user_id);
-CREATE INDEX idx_matches_user_a_id ON public.matches(user_a_id);
-CREATE INDEX idx_matches_user_b_id ON public.matches(user_b_id);
-CREATE INDEX idx_matches_status ON public.matches(status);
-CREATE INDEX idx_chat_rooms_user_a_id ON public.chat_rooms(user_a_id);
-CREATE INDEX idx_chat_rooms_user_b_id ON public.chat_rooms(user_b_id);
-CREATE INDEX idx_messages_chat_id ON public.messages(chat_id);
-CREATE INDEX idx_messages_sender_id ON public.messages(sender_id);
-CREATE INDEX idx_diaries_user_id ON public.diaries(user_id);
-CREATE INDEX idx_diaries_pet_id ON public.diaries(pet_id);
-CREATE INDEX idx_diaries_is_public ON public.diaries(is_public);
-CREATE INDEX idx_comments_diary_id ON public.comments(diary_id);
-CREATE INDEX idx_likes_diary_id ON public.likes(diary_id);
-CREATE INDEX idx_market_products_seller_id ON public.market_products(seller_id);
-CREATE INDEX idx_market_products_status ON public.market_products(status);
-CREATE INDEX idx_breeding_requests_sender_id ON public.breeding_requests(sender_id);
-CREATE INDEX idx_breeding_requests_receiver_id ON public.breeding_requests(receiver_id);
-CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX idx_prayer_records_user_id ON public.prayer_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_pets_user_id ON public.pets(user_id);
+CREATE INDEX IF NOT EXISTS idx_matches_user_a_id ON public.matches(user_a_id);
+CREATE INDEX IF NOT EXISTS idx_matches_user_b_id ON public.matches(user_b_id);
+CREATE INDEX IF NOT EXISTS idx_chat_rooms_user_a_id ON public.chat_rooms(user_a_id);
+CREATE INDEX IF NOT EXISTS idx_chat_rooms_user_b_id ON public.chat_rooms(user_b_id);
+CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON public.messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_diaries_user_id ON public.diaries(user_id);
+CREATE INDEX IF NOT EXISTS idx_market_products_seller_id ON public.market_products(seller_id);
+CREATE INDEX IF NOT EXISTS idx_breeding_requests_sender_id ON public.breeding_requests(sender_id);
+CREATE INDEX IF NOT EXISTS idx_breeding_requests_receiver_id ON public.breeding_requests(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
 
--- RLS 策略 - Row Level Security Policies (可选，根据需要启用)
--- ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
--- ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
-
--- 更新触发器 - Update Timestamp Triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_pets_updated_at BEFORE UPDATE ON public.pets
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_pets_updated_at ON public.pets;
+CREATE TRIGGER update_pets_updated_at BEFORE UPDATE ON public.pets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON public.matches
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_matches_updated_at ON public.matches;
+CREATE TRIGGER update_matches_updated_at BEFORE UPDATE ON public.matches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_chat_rooms_updated_at BEFORE UPDATE ON public.chat_rooms
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_chat_rooms_updated_at ON public.chat_rooms;
+CREATE TRIGGER update_chat_rooms_updated_at BEFORE UPDATE ON public.chat_rooms FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON public.messages
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_messages_updated_at ON public.messages;
+CREATE TRIGGER update_messages_updated_at BEFORE UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_diaries_updated_at BEFORE UPDATE ON public.diaries
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_diaries_updated_at ON public.diaries;
+CREATE TRIGGER update_diaries_updated_at BEFORE UPDATE ON public.diaries FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_breeding_requests_updated_at BEFORE UPDATE ON public.breeding_requests
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_breeding_requests_updated_at ON public.breeding_requests;
+CREATE TRIGGER update_breeding_requests_updated_at BEFORE UPDATE ON public.breeding_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_market_products_updated_at BEFORE UPDATE ON public.market_products
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-`;
-
-export default schema;
+DROP TRIGGER IF EXISTS update_market_products_updated_at ON public.market_products;
+CREATE TRIGGER update_market_products_updated_at BEFORE UPDATE ON public.market_products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -1,7 +1,11 @@
-// API 服务配置文件
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+﻿import type { Owner, Pet } from '../types';
 
-interface ApiResponse<T = any> {
+const DEFAULT_API_BASE_URL = 'http://localhost:3001';
+
+const normalizeBaseUrl = (value?: string) =>
+  (value || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -15,16 +19,234 @@ interface ApiResponse<T = any> {
   };
 }
 
+export interface ApiUser {
+  id: string;
+  username: string;
+  email: string;
+  age?: number;
+  gender?: string;
+  resident_city?: string;
+  frequent_cities?: string[];
+  hobbies?: string[];
+  mbti?: string;
+  signature?: string;
+  avatar_url?: string;
+  photos?: string[];
+  bio?: string;
+  is_verified?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  last_login?: string;
+}
+
+export interface ApiPetRecord {
+  id: string;
+  user_id?: string;
+  name: string;
+  type?: string;
+  gender?: string;
+  personality?: string;
+  breed?: string;
+  age?: number;
+  weight?: number;
+  images?: string[];
+  bio?: string;
+  is_digital_twin?: boolean;
+  digital_twin_data?: {
+    model_url?: string;
+    generated_at?: string;
+    ai_personality?: string;
+  };
+  health_status?: string;
+  vaccinated?: boolean;
+  pedigree_info?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApiDiscoveryPet extends ApiPetRecord {
+  owner?: ApiUser;
+}
+
+export interface AuthPayload {
+  user: ApiUser;
+  token: string;
+}
+
+export interface OnboardingBootstrapInput {
+  owner: Partial<Owner>;
+  pet: Partial<Pet>;
+  auth: {
+    username?: string;
+    email?: string;
+    password?: string;
+    phone?: string;
+    mode: 'email' | 'phone' | 'demo';
+    quickAccess?: boolean;
+  };
+}
+
+export interface ApiChatRoom {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  last_message?: string | null;
+  last_message_time?: string | null;
+  updated_at?: string;
+  other_user?: ApiUser;
+  unread_count?: number;
+}
+
+export interface ApiDiaryRecord {
+  id: string;
+  user_id: string;
+  pet_id: string;
+  title: string;
+  content: string;
+  images?: string[];
+  mood?: string;
+  tags?: string[];
+  is_public?: boolean;
+  likes_count?: number;
+  comments_count?: number;
+  created_at?: string;
+  pet?: ApiPetRecord;
+  user?: ApiUser;
+}
+
+export interface ApiPrayerRecord {
+  id: string;
+  user_id: string;
+  pet_id: string;
+  prayer_text: string;
+  ai_response?: string;
+  sentiment?: string;
+  created_at?: string;
+  pet?: ApiPetRecord;
+}
+
+export interface ApiNotification {
+  id: string;
+  user_id: string;
+  message: string;
+  type: 'match' | 'message' | 'breeding' | 'like' | 'system';
+  related_user_id?: string | null;
+  is_read: boolean;
+  created_at?: string;
+}
+
+export interface ApiMarketProduct {
+  id: string;
+  seller_id: string;
+  pet_id?: string | null;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  price?: number | null;
+  images?: string[];
+  status?: 'active' | 'sold' | 'inactive';
+  type?: 'breeding' | 'service' | 'care_product' | 'toy' | 'food';
+  requirements?: string | null;
+  created_at?: string;
+  seller?: ApiUser;
+  pet?: ApiPetRecord;
+}
+
+export interface ApiMatchRecord {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  pet_a_id: string;
+  pet_b_id: string;
+  compatibility_score?: number | null;
+  status: 'pending' | 'matched' | 'rejected';
+  created_at?: string;
+  user_a?: ApiUser;
+  user_b?: ApiUser;
+  pet_a?: ApiPetRecord;
+  pet_b?: ApiPetRecord;
+}
+
+export interface ApiComment {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at?: string;
+  user?: ApiUser;
+}
+
+export interface AdminOverview {
+  stats: {
+    users: number;
+    pets: number;
+    matches: number;
+    messages: number;
+    diaries: number;
+    products: number;
+    breedingRequests: number;
+    notifications: number;
+  };
+  health: {
+    environment: string;
+    apiBaseUrl: string;
+    supabaseConfigured: boolean;
+    googleAiConfigured: boolean;
+    adminEmailCount: number;
+    timestamp: string;
+  };
+  recentUsers: Array<{
+    id: string;
+    username: string;
+    email: string;
+    resident_city?: string;
+    is_verified?: boolean;
+    created_at?: string;
+    last_login?: string;
+  }>;
+  recentPets: Array<{
+    id: string;
+    name: string;
+    type?: string;
+    gender?: string;
+    created_at?: string;
+    owner?: {
+      id: string;
+      username: string;
+      avatar_url?: string;
+    };
+  }>;
+  recentMessages: Array<{
+    id: string;
+    content: string;
+    created_at?: string;
+    sender?: {
+      id: string;
+      username: string;
+    };
+    receiver?: {
+      id: string;
+      username: string;
+    };
+  }>;
+}
+
 class ApiService {
-  private baseUrl = API_BASE_URL;
+  private baseUrl = normalizeBaseUrl(import.meta.env.VITE_API_URL);
   private token: string | null = null;
 
   constructor() {
-    // 从 localStorage 恢复 token
     const savedToken = typeof window !== 'undefined' ? localStorage.getItem('pupy_token') : null;
     if (savedToken) {
       this.token = savedToken;
     }
+  }
+
+  getBaseUrl() {
+    return this.baseUrl;
+  }
+
+  isConfigured() {
+    return Boolean(this.baseUrl);
   }
 
   setToken(token: string) {
@@ -45,54 +267,41 @@ class ApiService {
     }
   }
 
-  private getHeaders() {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+  private getHeaders(extraHeaders?: HeadersInit) {
+    const headers = new Headers(extraHeaders);
+    headers.set('Content-Type', 'application/json');
     const token = this.getToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.set('Authorization', `Bearer ${token}`);
     }
+
     return headers;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    try {
-      const url = `${this.baseUrl}${endpoint}`;
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          ...this.getHeaders(),
-          ...options.headers,
-        },
-      });
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers: this.getHeaders(options.headers),
+    });
 
-      const data: ApiResponse<T> = await response.json();
+    const data = (await response.json().catch(() => ({ success: response.ok } as ApiResponse<T>))) as ApiResponse<T>;
 
-      if (!response.ok) {
-        throw new Error(data.error || `请求失败: ${response.status}`);
-      }
-
-      return data;
-    } catch (error: any) {
-      console.error(`API Error (${endpoint}):`, error.message);
-      throw error;
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `Request failed: ${response.status}`);
     }
+
+    return data;
   }
 
-  // ==================== 认证接口 ====================
   async register(
     username: string,
     email: string,
     password: string,
     age: number,
     gender: '男' | '女' | '其他',
-    resident_city: string
+    residentCity: string,
   ) {
-    const result = await this.request('/api/auth/register', {
+    const result = await this.request<AuthPayload>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         username,
@@ -100,7 +309,7 @@ class ApiService {
         password,
         age,
         gender,
-        resident_city,
+        resident_city: residentCity,
       }),
     });
 
@@ -112,7 +321,7 @@ class ApiService {
   }
 
   async login(email: string, password: string) {
-    const result = await this.request('/api/auth/login', {
+    const result = await this.request<AuthPayload>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -124,53 +333,79 @@ class ApiService {
     return result;
   }
 
+  async bootstrapOnboarding(payload: OnboardingBootstrapInput) {
+    const result = await this.request<AuthPayload & { pet: ApiPetRecord }>('/api/auth/bootstrap', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+
+    if (result.data?.token) {
+      this.setToken(result.data.token);
+    }
+
+    return result;
+  }
+
   async getCurrentUser() {
-    return this.request('/api/auth/me');
+    return this.request<ApiUser>('/api/auth/me');
+  }
+
+  async updateCurrentUser(updates: Record<string, unknown>) {
+    return this.request<ApiUser>('/api/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
   }
 
   async logout() {
     this.clearToken();
   }
 
-  // ==================== 宠物接口 ====================
-  async createPet(petData: any) {
-    return this.request('/api/pets', {
+  async createPet(petData: Record<string, unknown>) {
+    return this.request<ApiPetRecord>('/api/pets', {
       method: 'POST',
       body: JSON.stringify(petData),
     });
   }
 
   async getPets() {
-    return this.request('/api/pets');
+    return this.request<ApiPetRecord[]>('/api/pets');
   }
 
   async getPetById(petId: string) {
-    return this.request(`/api/pets/${petId}`);
+    return this.request<ApiPetRecord>(`/api/pets/${petId}`);
   }
 
-  async updatePet(petId: string, updates: any) {
-    return this.request(`/api/pets/${petId}`, {
+  async getDiscoverPets(type?: string, gender?: string, limit = 24) {
+    const params = new URLSearchParams();
+    if (type) params.set('type', type);
+    if (gender) params.set('gender', gender);
+    params.set('limit', String(limit));
+    return this.request<ApiDiscoveryPet[]>(`/api/pets/discover?${params.toString()}`);
+  }
+
+  async updatePet(petId: string, updates: Record<string, unknown>) {
+    return this.request<ApiPetRecord>(`/api/pets/${petId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
   async deletePet(petId: string) {
-    return this.request(`/api/pets/${petId}`, {
+    return this.request<null>(`/api/pets/${petId}`, {
       method: 'DELETE',
     });
   }
 
   async createDigitalTwin(petId: string, modelUrl: string, aiPersonality: string) {
-    return this.request(`/api/pets/${petId}/digital-twin`, {
+    return this.request<ApiPetRecord>(`/api/pets/${petId}/digital-twin`, {
       method: 'POST',
       body: JSON.stringify({ modelUrl, aiPersonality }),
     });
   }
 
-  // ==================== 匹配接口 ====================
   async createMatch(userBId: string, petAId: string, petBId: string) {
-    return this.request('/api/matches', {
+    return this.request<ApiMatchRecord>('/api/matches', {
       method: 'POST',
       body: JSON.stringify({
         user_b_id: userBId,
@@ -181,23 +416,22 @@ class ApiService {
   }
 
   async getMatches(page = 1, limit = 20) {
-    return this.request(`/api/matches?page=${page}&limit=${limit}`);
+    return this.request<ApiMatchRecord[]>(`/api/matches?page=${page}&limit=${limit}`);
   }
 
   async updateMatchStatus(matchId: string, status: 'matched' | 'rejected') {
-    return this.request(`/api/matches/${matchId}/status`, {
+    return this.request<ApiMatchRecord>(`/api/matches/${matchId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
   }
 
-  // ==================== 消息接口 ====================
   async getChatRooms(page = 1, limit = 20) {
-    return this.request(`/api/messages/rooms?page=${page}&limit=${limit}`);
+    return this.request<ApiChatRoom[]>(`/api/messages/rooms?page=${page}&limit=${limit}`);
   }
 
   async getOrCreateChatRoom(userBId: string) {
-    return this.request('/api/messages/rooms', {
+    return this.request<ApiChatRoom>('/api/messages/rooms', {
       method: 'POST',
       body: JSON.stringify({ user_b_id: userBId }),
     });
@@ -217,7 +451,6 @@ class ApiService {
     return this.request(`/api/messages/rooms/${chatRoomId}/messages?page=${page}&limit=${limit}`);
   }
 
-  // ==================== 日记接口 ====================
   async createDiary(
     petId: string,
     title: string,
@@ -225,9 +458,9 @@ class ApiService {
     images?: string[],
     mood?: string,
     tags?: string[],
-    isPublic = false
+    isPublic = false,
   ) {
-    return this.request('/api/diaries', {
+    return this.request<ApiDiaryRecord>('/api/diaries', {
       method: 'POST',
       body: JSON.stringify({
         pet_id: petId,
@@ -242,96 +475,102 @@ class ApiService {
   }
 
   async getUserDiaries(page = 1, limit = 20) {
-    return this.request(`/api/diaries?page=${page}&limit=${limit}`);
+    return this.request<ApiDiaryRecord[]>(`/api/diaries?page=${page}&limit=${limit}`);
   }
 
   async getPublicDiaries(page = 1, limit = 20) {
-    return this.request(`/api/diaries/public/feed?page=${page}&limit=${limit}`);
+    return this.request<ApiDiaryRecord[]>(`/api/diaries/public/feed?page=${page}&limit=${limit}`);
   }
 
   async getDiaryById(diaryId: string) {
-    return this.request(`/api/diaries/${diaryId}`);
+    return this.request<ApiDiaryRecord>(`/api/diaries/${diaryId}`);
   }
 
-  async updateDiary(diaryId: string, updates: any) {
-    return this.request(`/api/diaries/${diaryId}`, {
+  async updateDiary(diaryId: string, updates: Record<string, unknown>) {
+    return this.request<ApiDiaryRecord>(`/api/diaries/${diaryId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
   async deleteDiary(diaryId: string) {
-    return this.request(`/api/diaries/${diaryId}`, {
+    return this.request<null>(`/api/diaries/${diaryId}`, {
       method: 'DELETE',
     });
   }
 
   async likeDiary(diaryId: string) {
-    return this.request(`/api/diaries/${diaryId}/like`, {
+    return this.request<null>(`/api/diaries/${diaryId}/like`, {
       method: 'POST',
     });
   }
 
   async unlikeDiary(diaryId: string) {
-    return this.request(`/api/diaries/${diaryId}/like`, {
+    return this.request<null>(`/api/diaries/${diaryId}/like`, {
       method: 'DELETE',
     });
   }
 
   async addComment(diaryId: string, content: string) {
-    return this.request(`/api/diaries/${diaryId}/comments`, {
+    return this.request<ApiComment>(`/api/diaries/${diaryId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
   }
 
   async getComments(diaryId: string, page = 1, limit = 20) {
-    return this.request(`/api/diaries/${diaryId}/comments?page=${page}&limit=${limit}`);
+    return this.request<ApiComment[]>(`/api/diaries/${diaryId}/comments?page=${page}&limit=${limit}`);
   }
 
-  // ==================== 市集接口 ====================
-  async createMarketProduct(productData: any) {
-    return this.request('/api/market', {
+  async createMarketProduct(productData: Record<string, unknown>) {
+    return this.request<ApiMarketProduct>('/api/market', {
       method: 'POST',
       body: JSON.stringify(productData),
     });
   }
 
+  async getMarketFeed(category?: string, type?: string, limit = 20) {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (type) params.set('type', type);
+    params.set('limit', String(limit));
+    return this.request<ApiMarketProduct[]>(`/api/market/feed?${params.toString()}`);
+  }
+
   async getMarketByCategory(category: string, page = 1, limit = 20) {
-    return this.request(`/api/market/category/${category}?page=${page}&limit=${limit}`);
+    return this.request<ApiMarketProduct[]>(`/api/market/category/${category}?page=${page}&limit=${limit}`);
   }
 
   async searchMarket(keyword: string, page = 1, limit = 20) {
-    return this.request(`/api/market/search?keyword=${keyword}&page=${page}&limit=${limit}`);
+    return this.request<ApiMarketProduct[]>(`/api/market/search?keyword=${encodeURIComponent(keyword)}&page=${page}&limit=${limit}`);
   }
 
   async getSellerProducts(sellerId: string) {
-    return this.request(`/api/market/seller/${sellerId}`);
+    return this.request<ApiMarketProduct[]>(`/api/market/seller/${sellerId}`);
   }
 
-  async updateMarketProduct(productId: string, updates: any) {
-    return this.request(`/api/market/${productId}`, {
+  async updateMarketProduct(productId: string, updates: Record<string, unknown>) {
+    return this.request<ApiMarketProduct>(`/api/market/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
   async deleteMarketProduct(productId: string) {
-    return this.request(`/api/market/${productId}`, {
+    return this.request<null>(`/api/market/${productId}`, {
       method: 'DELETE',
     });
   }
 
   async getBreedingMarket(page = 1, limit = 20) {
-    return this.request(`/api/market/breeding/market?page=${page}&limit=${limit}`);
+    return this.request<ApiMarketProduct[]>(`/api/market/breeding/market?page=${page}&limit=${limit}`);
   }
 
-  // ==================== 配种接口 ====================
   async createBreedingRequest(
     receiverId: string,
     senderPetId: string,
     receiverPetId: string,
-    notes = ''
+    notes = '',
   ) {
     return this.request('/api/breeding', {
       method: 'POST',
@@ -355,9 +594,8 @@ class ApiService {
     });
   }
 
-  // ==================== AI 祈祷接口 ====================
   async createPrayer(petId: string, prayerText: string) {
-    return this.request('/api/ai/prayer', {
+    return this.request<ApiPrayerRecord>('/api/ai/prayer', {
       method: 'POST',
       body: JSON.stringify({
         pet_id: petId,
@@ -367,11 +605,11 @@ class ApiService {
   }
 
   async getPrayerRecords(page = 1, limit = 20) {
-    return this.request(`/api/ai/prayer?page=${page}&limit=${limit}`);
+    return this.request<ApiPrayerRecord[]>(`/api/ai/prayer?page=${page}&limit=${limit}`);
   }
 
   async getNotifications() {
-    return this.request('/api/ai/notifications');
+    return this.request<ApiNotification[]>('/api/ai/notifications');
   }
 
   async markNotificationAsRead(notificationId: string) {
@@ -380,15 +618,28 @@ class ApiService {
     });
   }
 
-  // ==================== 健康检查 ====================
+  async getAdminOverview() {
+    return this.request<AdminOverview>('/api/admin/overview');
+  }
+
   async healthCheck() {
-    return this.request('/health');
+    return this.request<{
+      success: boolean;
+      message: string;
+      timestamp: string;
+      environment: string;
+    }>('/health');
   }
 
   async getApiVersion() {
-    return this.request('/api/version');
+    return this.request<{
+      version: string;
+      name: string;
+      description: string;
+    }>('/api/version');
   }
 }
 
 export const apiService = new ApiService();
 export default apiService;
+
