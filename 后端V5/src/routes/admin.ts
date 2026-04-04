@@ -1,12 +1,15 @@
-﻿import Express from 'express';
+import Express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import config from '../config/index.js';
 import { AuthRequest, authMiddleware } from '../middleware/authMiddleware.js';
 import AdminService from '../services/adminService.js';
 import { getPaginationParams } from '../utils/pagination.js';
 
 const router = Express.Router();
-const adminHtmlPath = path.resolve(process.cwd(), 'src/public/admin-panel.html');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const adminHtmlPath = path.resolve(__dirname, '../public/admin-panel.html');
 
 const ensureAdmin = (req: AuthRequest, res: Express.Response) => {
   const email = req.user?.email?.toLowerCase();

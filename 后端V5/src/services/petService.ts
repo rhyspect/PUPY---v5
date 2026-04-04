@@ -2,6 +2,13 @@
 import { supabase } from '../config/supabase.js';
 import type { ApiResponse, CreatePetRequest, Pet } from '../types/index.js';
 
+function normalizeOppositeGender(gender?: string) {
+  const normalized = (gender || '').toLowerCase();
+  if (normalized === 'male' || normalized === '公') return 'female';
+  if (normalized === 'female' || normalized === '母') return 'male';
+  return gender;
+}
+
 export class PetService {
   static async createPet(userId: string, data: CreatePetRequest): Promise<ApiResponse<Pet>> {
     try {
@@ -164,12 +171,12 @@ export class PetService {
     offset = 0,
   ): Promise<ApiResponse<Pet[]>> {
     try {
-      const targetGender = gender === '公' ? '母' : '公';
+      const targetGender = normalizeOppositeGender(gender);
       const { data, error } = await supabase
         .from('pets')
         .select('*, owner:users!pets_user_id_fkey(id, username, avatar_url)')
         .eq('type', petType)
-        .eq('gender', targetGender)
+        .eq('gender', targetGender || gender)
         .eq('health_status', 'healthy')
         .eq('vaccinated', true)
         .range(offset, offset + limit - 1);
@@ -199,6 +206,19 @@ export class PetService {
     limit = 20,
   ): Promise<ApiResponse<any[]>> {
     try {
+      const { data: existingMatches } = await supabase
+        .from('matches')
+        .select('user_a_id, user_b_id')
+        .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
+
+      const excludedUserIds = new Set<string>([userId]);
+      for (const match of existingMatches || []) {
+        const otherUserId = match.user_a_id === userId ? match.user_b_id : match.user_a_id;
+        if (otherUserId) {
+          excludedUserIds.add(otherUserId);
+        }
+      }
+
       const query = supabase
         .from('pets')
         .select(
@@ -214,22 +234,24 @@ export class PetService {
             mbti,
             signature,
             avatar_url,
-            photos,
             bio,
             is_verified
           )`,
         )
-        .neq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
+
+      query.not('user_id', 'in', `(${Array.from(excludedUserIds).join(',')})`);
 
       if (petType) {
         query.eq('type', petType);
       }
 
       if (petGender) {
-        const targetGender = petGender === '公' ? '母' : petGender === '母' ? '公' : petGender;
-        query.eq('gender', targetGender);
+        const targetGender = normalizeOppositeGender(petGender);
+        if (targetGender) {
+          query.eq('gender', targetGender);
+        }
       }
 
       const { data, error } = await query;

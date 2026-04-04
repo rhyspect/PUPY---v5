@@ -1,4 +1,5 @@
 ﻿import type { Owner, Pet } from '../types';
+import { getStoredLocale } from '../utils/locale';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3001';
 
@@ -270,6 +271,7 @@ class ApiService {
   private getHeaders(extraHeaders?: HeadersInit) {
     const headers = new Headers(extraHeaders);
     headers.set('Content-Type', 'application/json');
+    headers.set('Accept-Language', getStoredLocale());
     const token = this.getToken();
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -642,4 +644,8 @@ class ApiService {
 
 export const apiService = new ApiService();
 export default apiService;
+
+
+
+
 

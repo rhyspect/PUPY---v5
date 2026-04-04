@@ -37,8 +37,8 @@ function toMarketCard(item: ApiMarketProduct): MarketCard {
   return {
     id: item.id,
     kind: item.type === 'breeding' ? 'breeding' : item.type === 'service' ? 'service' : 'product',
-    title: item.pet?.name || item.title,
-    subtitle: item.pet?.type || item.title,
+    title: item.title,
+    subtitle: item.pet?.name ? `${item.pet.name} · ${item.pet.type || item.pet.breed || '宠物档案'}` : item.category || '市场发布',
     image,
     priceLabel: item.price ? `¥${item.price}` : '私聊报价',
     description: item.description || item.requirements || '暂无更多描述',
@@ -52,9 +52,9 @@ function toMarketCard(item: ApiMarketProduct): MarketCard {
 
 function titleByCategory(category: string) {
   if (category === 'love') return '真实配对档案';
-  if (category === 'walk') return '附近遛宠与陪伴服务';
-  if (category === 'care') return '专业宠物养护';
-  return '精选好物';
+  if (category === 'walk') return '同城服务与陪伴';
+  if (category === 'care') return '护理与养护推荐';
+  return '全站精选好物';
 }
 
 export default function Market({ onChat, currentUser, userPet }: MarketProps) {
@@ -63,18 +63,21 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<MarketCard[]>([]);
+  const [myListings, setMyListings] = useState<MarketCard[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const loadCategory = async (category: string) => {
     setLoading(true);
     try {
       let result;
-      if (category === 'love') {
+      if (searchTerm.trim()) {
+        result = await apiService.searchMarket(searchTerm.trim(), 1, 24);
+      } else if (category === 'love') {
         result = await apiService.getBreedingMarket();
       } else if (category === 'walk') {
-        result = await apiService.getMarketFeed('walk', 'service', 20);
+        result = await apiService.getMarketFeed(undefined, 'service', 24);
       } else if (category === 'care') {
-        result = await apiService.getMarketFeed('care', undefined, 20);
+        result = await apiService.getMarketFeed(undefined, 'care_product', 24);
       } else {
         result = await apiService.getMarketFeed(undefined, undefined, 24);
       }
@@ -96,17 +99,29 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
     }
   };
 
+  const loadMyListings = async () => {
+    if (!currentUser?.id) {
+      setMyListings([]);
+      return;
+    }
+
+    try {
+      const result = await apiService.getSellerProducts(currentUser.id);
+      setMyListings((result.data || []).map(toMarketCard));
+    } catch {
+      setMyListings([]);
+    }
+  };
+
   useEffect(() => {
     void loadCategory(activeCategory);
-  }, [activeCategory]);
+  }, [activeCategory, searchTerm]);
 
-  const filteredItems = useMemo(() => {
-    if (!searchTerm.trim()) return items;
-    const query = searchTerm.trim().toLowerCase();
-    return items.filter((item) =>
-      [item.title, item.subtitle, item.description, item.tags.join(' ')].join(' ').toLowerCase().includes(query),
-    );
-  }, [items, searchTerm]);
+  useEffect(() => {
+    void loadMyListings();
+  }, [currentUser?.id]);
+
+  const filteredItems = useMemo(() => items, [items]);
 
   const submitBreedingRequest = async () => {
     if (!selectedItem || !selectedItem.ownerId || !selectedItem.petId || submitting) return;
@@ -122,9 +137,24 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
   return (
     <div className="px-6 space-y-8 pb-10">
       <section className="text-center space-y-2">
-        <h1 className="font-headline text-4xl font-extrabold tracking-tight text-primary italic">宠物养护</h1>
-        <p className="text-slate-500 font-medium tracking-tight">基于真实 Supabase 数据的服务、配对和商品流</p>
+        <h1 className="font-headline text-4xl font-extrabold tracking-tight text-primary italic">市场流</h1>
+        <p className="text-slate-500 font-medium tracking-tight">服务、配对和商品都来自真实 Supabase 数据</p>
       </section>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">当前结果</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">{filteredItems.length}</p>
+        </div>
+        <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">我的发布</p>
+          <p className="mt-2 text-2xl font-black text-slate-900">{myListings.length}</p>
+        </div>
+        <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">当前分类</p>
+          <p className="mt-2 text-sm font-black text-slate-900">{titleByCategory(activeCategory)}</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-4 gap-4">
         {MARKET_CATEGORIES.map((cat) => (
@@ -155,10 +185,35 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
           type="text"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="搜索心仪的宠物、服务或用品..."
+          placeholder="搜索服务、配对、主粮、玩具或发布者..."
           className="w-full pl-12 pr-6 py-4 bg-white border-none rounded-[2rem] shadow-sm focus:ring-2 focus:ring-primary/20 font-medium text-sm"
         />
       </div>
+
+      {myListings.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">我的真实发布</h3>
+            <span className="text-[10px] font-bold text-slate-400">仅展示最近 3 条</span>
+          </div>
+          <div className="space-y-3">
+            {myListings.slice(0, 3).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setSelectedItem(item)}
+                className="w-full text-left bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm flex items-center gap-4"
+              >
+                <img src={item.image} className="w-14 h-14 rounded-2xl object-cover" alt={item.title} referrerPolicy="no-referrer" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-slate-900 truncate">{item.title}</p>
+                  <p className="text-xs text-slate-500 truncate mt-1">{item.description}</p>
+                </div>
+                <span className="text-xs font-black text-primary whitespace-nowrap">{item.priceLabel}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="space-y-6">
         <div className="flex justify-between items-center px-2">
@@ -169,7 +224,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
         {loading ? (
           <div className="bg-white rounded-[2.5rem] p-8 text-center text-sm text-slate-400 border border-slate-100">正在同步真实市场数据…</div>
         ) : filteredItems.length === 0 ? (
-          <div className="bg-white rounded-[2.5rem] p-8 text-center text-sm text-slate-400 border border-slate-100">当前分类还没有内容，可以先发布第一条。</div>
+          <div className="bg-white rounded-[2.5rem] p-8 text-center text-sm text-slate-400 border border-slate-100">当前筛选下还没有内容，可以先换个分类看看。</div>
         ) : activeCategory === 'love' ? (
           <div className="grid grid-cols-2 gap-4">
             {filteredItems.map((item) => (
@@ -186,10 +241,10 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                 </div>
                 <div className="p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="font-black text-slate-900 text-base truncate">{item.title}</h4>
+                    <h4 className="font-black text-slate-900 text-sm line-clamp-2">{item.title}</h4>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-600">{item.raw.pet?.gender || '档案'}</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-bold truncate">{item.subtitle}</p>
+                  <p className="text-[10px] text-slate-400 font-bold line-clamp-2">{item.subtitle}</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {item.tags.slice(0, 2).map((tag) => (
                       <span key={tag} className="px-1.5 py-0.5 bg-slate-50 text-slate-400 text-[8px] font-bold rounded uppercase tracking-wider">
@@ -295,13 +350,14 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                     <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm overflow-hidden">
                       <img src={selectedItem.owner.avatar} className="w-full h-full object-cover rounded-2xl" alt={selectedItem.owner.name} referrerPolicy="no-referrer" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">发布者</p>
-                      <p className="text-sm font-black text-slate-900">{selectedItem.owner.name}</p>
+                      <p className="text-sm font-black text-slate-900 truncate">{selectedItem.owner.name}</p>
+                      <p className="text-[10px] text-slate-500 mt-1 truncate">{selectedItem.owner.signature}</p>
                     </div>
                     <button
                       onClick={() => onChat(selectedItem.owner)}
-                      className="ml-auto w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"
+                      className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center"
                     >
                       <span className="material-symbols-outlined text-lg">chat</span>
                     </button>
@@ -310,6 +366,17 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                   <div className="space-y-3">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">详细介绍</h4>
                     <p className="text-sm font-bold text-slate-600 leading-relaxed">{selectedItem.description}</p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-[2rem] p-5 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">宠物信息</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{selectedItem.subtitle}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">状态</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{selectedItem.raw.status || 'active'}</p>
+                    </div>
                   </div>
                 </div>
               </div>

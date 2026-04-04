@@ -18,6 +18,9 @@ export function createOwnerFromApi(user: Partial<ApiUser> = {}): Owner {
   const photos = pickStringArray((user as { photos?: string[] }).photos, [avatar]);
 
   return {
+    id: user.id,
+    email: user.email,
+    isVerified: Boolean(user.is_verified),
     name: pickString(user.username, 'PUPY 用户'),
     avatar,
     photos,

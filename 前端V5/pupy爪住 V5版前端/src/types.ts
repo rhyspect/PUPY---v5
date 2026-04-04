@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'tour' | 'market' | 'messages' | 'profile' | 'creation' | 'chat';
+﻿export type Screen = 'home' | 'tour' | 'market' | 'messages' | 'profile' | 'creation' | 'chat';
 
 export interface NavItem {
   id: Screen;
@@ -7,6 +7,9 @@ export interface NavItem {
 }
 
 export interface Owner {
+  id?: string;
+  email?: string;
+  isVerified?: boolean;
   name: string;
   avatar: string;
   photos: string[];

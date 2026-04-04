@@ -7,6 +7,7 @@ import { createPetFromApi } from './utils/adapters';
 import FeatureModal from './components/FeatureModal';
 import type { AppLocale } from './utils/locale';
 import { getStoredLocale, setStoredLocale } from './utils/locale';
+import { getAppCopy } from './utils/copy';
 
 import Home from './components/Home';
 import Tour from './components/Tour';
@@ -62,20 +63,29 @@ export default function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<Owner | null>(null);
   const [activeChatOwner, setActiveChatOwner] = useState<Owner | null>(null);
+  const [activeChatRoomId, setActiveChatRoomId] = useState<string | null>(null);
   const [isDigitalTwinCreated, setIsDigitalTwinCreated] = useState(false);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const copy = getAppCopy(locale);
   const [backendStatus, setBackendStatus] = useState({
     connected: false,
     environment: '',
     baseUrl: apiService.getBaseUrl(),
-    message: '等待 API 健康检查。',
+    message: copy.backend.waiting,
   });
 
   useEffect(() => {
     setStoredLocale(locale);
     document.documentElement.lang = locale;
   }, [locale]);
+
+  useEffect(() => {
+    setBackendStatus((previous) => ({
+      ...previous,
+      message: previous.connected ? previous.message : copy.backend.waiting,
+    }));
+  }, [copy.backend.waiting]);
 
   useEffect(() => {
     void bootstrapSession();
@@ -90,14 +100,14 @@ export default function App() {
         connected: true,
         environment: health.data?.environment || 'development',
         baseUrl: apiService.getBaseUrl(),
-        message: health.data?.message || 'API 已在线。',
+        message: health.data?.message || copy.backend.apiReady,
       });
     } catch (error) {
       setBackendStatus({
         connected: false,
         environment: '',
         baseUrl: apiService.getBaseUrl(),
-        message: error instanceof Error ? error.message : '健康检查失败。',
+        message: error instanceof Error ? error.message : copy.backend.healthFailed,
       });
     }
 
@@ -185,15 +195,11 @@ export default function App() {
       setCurrentScreen('home');
     });
 
-    showToast(payload.mode === 'api' ? '资料已同步到后端。' : '已进入本地体验模式。');
+    showToast(payload.mode === 'api' ? copy.toast.synced : copy.toast.localMode);
   };
 
-  const handleMatch = (owner?: Owner) => {
-    if (owner) {
-      setActiveChatOwner(owner);
-    }
-    showToast('已建立连接，正在进入聊天。');
-    openScreen('chat');
+  const handleMatch = (_owner?: Owner) => {
+    showToast(copy.toast.matched);
   };
 
   const handleReset = () => {
@@ -203,15 +209,33 @@ export default function App() {
       setCurrentUser(null);
       setUserPet(null);
       setNotifications([]);
+      setSelectedOwner(null);
+      setActiveChatOwner(null);
+      setActiveChatRoomId(null);
       setIsDigitalTwinCreated(false);
       setIsOnboarded(false);
       setCurrentScreen('home');
     });
   };
 
+  const handleProfileSync = (payload: { user?: ApiUser | null; pet?: Pet | null; isDigitalTwinCreated?: boolean }) => {
+    const nextUser = payload.user === undefined ? currentUser : payload.user ?? null;
+    const nextPet = payload.pet === undefined ? userPet : payload.pet;
+
+    if (nextPet) {
+      persistSession(nextPet, nextUser);
+    }
+
+    startTransition(() => {
+      if (payload.user !== undefined) setCurrentUser(payload.user ?? null);
+      if (payload.pet !== undefined && payload.pet) setUserPet(payload.pet);
+      if (payload.isDigitalTwinCreated !== undefined) setIsDigitalTwinCreated(payload.isDigitalTwinCreated);
+    });
+  };
+
   const handleLocaleChange = (nextLocale: AppLocale) => {
     setLocale(nextLocale);
-    showToast(nextLocale === 'zh-CN' ? '已切换为中文。' : 'Switched to English.');
+    showToast(nextLocale === 'zh-CN' ? copy.toast.switchedZh : copy.toast.switchedEn);
   };
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
@@ -223,7 +247,7 @@ export default function App() {
           <div className="w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center mx-auto">
             <span className="material-symbols-outlined text-4xl text-primary">pets</span>
           </div>
-          <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">Hydrating PUPY</p>
+          <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">{copy.shell.hydrating}</p>
         </div>
       </div>
     );
@@ -234,11 +258,11 @@ export default function App() {
   }
 
   const navItems: NavItem[] = [
-    { id: 'home', label: 'Home', icon: 'pets' },
-    { id: 'tour', label: 'Tour', icon: 'cloud' },
-    { id: 'messages', label: 'Messages', icon: 'chat_bubble' },
-    { id: 'market', label: 'Market', icon: 'shopping_bag' },
-    { id: 'profile', label: 'Profile', icon: 'person' },
+    { id: 'home', label: copy.nav.home, icon: 'pets' },
+    { id: 'tour', label: copy.nav.tour, icon: 'cloud' },
+    { id: 'messages', label: copy.nav.messages, icon: 'chat_bubble' },
+    { id: 'market', label: copy.nav.market, icon: 'shopping_bag' },
+    { id: 'profile', label: copy.nav.profile, icon: 'person' },
   ];
 
   return (
@@ -253,7 +277,7 @@ export default function App() {
             <div className="flex items-center gap-2 mt-1">
               <span className={`w-2 h-2 rounded-full ${backendStatus.connected ? 'bg-emerald-500' : 'bg-amber-400'}`} />
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                {backendStatus.connected ? 'API online' : 'Local fallback'}
+                {backendStatus.connected ? copy.shell.apiOnline : copy.shell.localFallback}
               </span>
             </div>
           </div>
@@ -268,7 +292,7 @@ export default function App() {
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all ${currentScreen === 'settings' ? 'bg-primary text-white shadow-lg' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             <span className="material-symbols-outlined text-[20px]">settings</span>
-            <span className="text-xs font-bold">设置</span>
+            <span className="text-xs font-bold">{copy.shell.settings}</span>
           </button>
         </div>
       </header>
@@ -278,12 +302,12 @@ export default function App() {
           <motion.div key={currentScreen} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
             {currentScreen === 'home' && <Home onMatch={handleMatch} onViewOwner={setSelectedOwner} currentUser={currentUser} userPet={userPet} />}
             {currentScreen === 'tour' && <Tour onSelectRealm={() => openScreen('messages')} />}
-            {currentScreen === 'messages' && <Messages currentUser={currentUser} userPet={userPet} onSelectChat={(owner) => { if (owner) setActiveChatOwner(owner); openScreen('chat'); }} onViewOwner={setSelectedOwner} />}
-            {currentScreen === 'market' && <Market currentUser={currentUser} userPet={userPet} onChat={(owner) => { setActiveChatOwner(owner); openScreen('chat'); }} />}
-            {currentScreen === 'profile' && <Profile userPet={userPet} isDigitalTwinCreated={isDigitalTwinCreated} onStartCreation={() => openScreen('creation')} onTwinCreated={() => setIsDigitalTwinCreated(true)} />}
+            {currentScreen === 'messages' && <Messages currentUser={currentUser} userPet={userPet} onSelectChat={(owner, roomId) => { setActiveChatOwner(owner || null); setActiveChatRoomId(roomId || null); openScreen('chat'); }} onViewOwner={setSelectedOwner} />}
+            {currentScreen === 'market' && <Market currentUser={currentUser} userPet={userPet} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); openScreen('chat'); }} />}
+            {currentScreen === 'profile' && <Profile userPet={userPet} currentUser={currentUser} isDigitalTwinCreated={isDigitalTwinCreated} onStartCreation={() => openScreen('creation')} onTwinCreated={() => setIsDigitalTwinCreated(true)} onProfileSync={handleProfileSync} />}
             {currentScreen === 'creation' && <Creation onComplete={() => { setIsDigitalTwinCreated(true); openScreen('profile'); }} />}
-            {currentScreen === 'chat' && <Chat owner={activeChatOwner} onBack={() => openScreen('messages')} />}
-            {currentScreen === 'breeding' && <Breeding onBack={() => openScreen('home')} onChat={(ownerName) => { setActiveChatOwner(createFallbackOwner(ownerName)); openScreen('chat'); }} />}
+            {currentScreen === 'chat' && <Chat owner={activeChatOwner} currentUser={currentUser} userPet={userPet} chatRoomId={activeChatRoomId} onBack={() => openScreen('messages')} />}
+            {currentScreen === 'breeding' && <Breeding onBack={() => openScreen('home')} onChat={(ownerName) => { setActiveChatOwner(createFallbackOwner(ownerName)); setActiveChatRoomId(null); openScreen('chat'); }} />}
             {currentScreen === 'diary' && <Diary onBack={() => openScreen('home')} />}
             {currentScreen === 'prayer' && <AIPrayer onBack={() => openScreen('home')} />}
             {currentScreen === 'settings' && <Settings userPet={{ name: userPet.name, image: userPet.images?.[0], hasPet: userPet.hasPet }} currentUserEmail={currentUser?.email || null} onBack={() => openScreen('home')} onReset={handleReset} onOpenAdmin={() => openScreen('admin')} onLocaleChange={handleLocaleChange} locale={locale} backendStatus={backendStatus} />}
@@ -315,41 +339,41 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-slate-900 font-bold font-headline text-lg leading-tight">{userPet.name}</h3>
-                  <p className="text-xs font-medium text-slate-500">{currentUser?.email || '本地会话'}</p>
+                  <p className="text-xs font-medium text-slate-500">{currentUser?.email || copy.shell.localSession}</p>
                 </div>
               </div>
 
               <nav className="space-y-4">
                 <button onClick={() => { setIsFiltersOpen(true); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">filter_list</span>
-                  <span className="font-medium">筛选器</span>
+                  <span className="font-medium">{copy.shell.filters}</span>
                 </button>
                 <button onClick={() => { openScreen('breeding'); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">fertile</span>
-                  <span className="font-medium">繁育配对</span>
+                  <span className="font-medium">{copy.shell.breeding}</span>
                 </button>
                 <button onClick={() => { openScreen('diary'); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">history</span>
-                  <span className="font-medium">日记空间</span>
+                  <span className="font-medium">{copy.shell.diary}</span>
                 </button>
                 <button onClick={() => { openScreen('prayer'); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">auto_awesome</span>
-                  <span className="font-medium">AI 祈愿</span>
+                  <span className="font-medium">{copy.shell.prayer}</span>
                 </button>
                 <button onClick={() => { openScreen('admin'); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">monitoring</span>
-                  <span className="font-medium">后端面板</span>
+                  <span className="font-medium">{copy.shell.adminPanel}</span>
                 </button>
                 <button onClick={() => { openScreen('settings'); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">settings</span>
-                  <span className="font-medium">系统设置</span>
+                  <span className="font-medium">{copy.shell.systemSettings}</span>
                 </button>
               </nav>
 
               <div className="mt-auto bg-slate-50 p-6 rounded-[2.5rem] shadow-inner border border-slate-100 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Runtime</span>
-                  <span className={`text-xs font-bold ${backendStatus.connected ? 'text-emerald-600' : 'text-amber-500'}`}>{backendStatus.connected ? 'Healthy' : 'Fallback'}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">{copy.shell.runtime}</span>
+                  <span className={`text-xs font-bold ${backendStatus.connected ? 'text-emerald-600' : 'text-amber-500'}`}>{backendStatus.connected ? copy.shell.healthy : copy.shell.fallback}</span>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">{backendStatus.message}</p>
               </div>
@@ -370,17 +394,19 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {selectedOwner && <OwnerProfile owner={selectedOwner} onClose={() => setSelectedOwner(null)} onStartChat={() => { setActiveChatOwner(selectedOwner); setSelectedOwner(null); openScreen('chat'); }} />}
+        {selectedOwner && <OwnerProfile owner={selectedOwner} onClose={() => setSelectedOwner(null)} onStartChat={() => { setActiveChatOwner(selectedOwner); setActiveChatRoomId(null); setSelectedOwner(null); openScreen('chat'); }} />}
       </AnimatePresence>
 
       <FeatureModal
         open={showNotificationCenter}
-        title="通知中心"
-        description={notifications.length ? '以下是当前已同步的真实通知。' : '目前还没有新的通知。'}
-        items={(notifications.length ? notifications : [{ id: 'empty', message: '没有新的匹配、聊天或系统提醒。' } as ApiNotification]).slice(0, 6).map((item) => item.message)}
+        title={copy.shell.notificationCenter}
+        description={notifications.length ? copy.shell.notificationDescription : copy.shell.notificationEmpty}
+        items={(notifications.length ? notifications : [{ id: 'empty', message: copy.shell.notificationEmpty } as ApiNotification]).slice(0, 6).map((item) => item.message)}
         onClose={() => setShowNotificationCenter(false)}
       />
     </div>
   );
 }
+
+
 

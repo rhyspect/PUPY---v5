@@ -1,12 +1,12 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { ApiChatRoom, ApiNotification, ApiPrayerRecord, ApiUser } from '../services/api';
+import type { ApiChatRoom, ApiMatchRecord, ApiNotification, ApiPrayerRecord, ApiUser } from '../services/api';
 import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 
 interface MessagesProps {
-  onSelectChat: (owner?: Owner) => void;
+  onSelectChat: (owner?: Owner, chatRoomId?: string) => void;
   onViewOwner: (owner: Owner) => void;
   currentUser: ApiUser | null;
   userPet: Pet;
@@ -19,9 +19,16 @@ function formatTimestamp(value?: string) {
   return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
-export default function Messages({ onSelectChat, onViewOwner, userPet }: MessagesProps) {
+function getCounterpartOwner(match: ApiMatchRecord, currentUserId?: string) {
+  if (!currentUserId) return null;
+  const otherUser = match.user_a_id === currentUserId ? match.user_b : match.user_a;
+  return otherUser ? createOwnerFromApi(otherUser) : null;
+}
+
+export default function Messages({ onSelectChat, onViewOwner, currentUser, userPet }: MessagesProps) {
   const [activeTab, setActiveTab] = useState<'owner' | 'pet'>('owner');
   const [chatRooms, setChatRooms] = useState<ApiChatRoom[]>([]);
+  const [matches, setMatches] = useState<ApiMatchRecord[]>([]);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [prayers, setPrayers] = useState<ApiPrayerRecord[]>([]);
   const [input, setInput] = useState('');
@@ -31,13 +38,15 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
   const loadData = async () => {
     setLoading(true);
     try {
-      const [roomsResult, notificationsResult, prayersResult] = await Promise.all([
+      const [roomsResult, matchesResult, notificationsResult, prayersResult] = await Promise.all([
         apiService.getChatRooms(),
+        apiService.getMatches(),
         apiService.getNotifications(),
         apiService.getPrayerRecords(),
       ]);
 
       setChatRooms(roomsResult.data || []);
+      setMatches(matchesResult.data || []);
       setNotifications(notificationsResult.data || []);
       setPrayers(prayersResult.data || []);
     } finally {
@@ -48,6 +57,16 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
   useEffect(() => {
     void loadData();
   }, []);
+
+  const pendingMatches = useMemo(
+    () => matches.filter((item) => item.status === 'pending'),
+    [matches],
+  );
+
+  const matchedOnly = useMemo(
+    () => matches.filter((item) => item.status === 'matched'),
+    [matches],
+  );
 
   const petFeed = useMemo(() => {
     const prayerCards = prayers.map((record) => ({
@@ -68,6 +87,8 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
       raw: item.type,
       time: item.created_at,
       tone: item.type,
+      notificationId: item.id,
+      isRead: item.is_read,
     }));
 
     return [...prayerCards, ...notificationCards]
@@ -88,6 +109,16 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
       setInput('');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleNotificationClick = async (notificationId?: string) => {
+    if (!notificationId) return;
+    try {
+      await apiService.markNotificationAsRead(notificationId);
+      setNotifications((prev) => prev.map((item) => item.id === notificationId ? { ...item, is_read: true } : item));
+    } catch {
+      // Keep UI unchanged if the request fails.
     }
   };
 
@@ -122,48 +153,112 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              {loading ? (
-                <div className="bg-white rounded-[2rem] p-6 text-center text-sm text-slate-400 border border-slate-100">正在同步真实聊天数据…</div>
-              ) : chatRooms.length === 0 ? (
-                <div className="bg-white rounded-[2rem] p-6 text-center text-sm text-slate-400 border border-slate-100">还没有新的聊天，去首页多认识几位吧。</div>
-              ) : (
-                chatRooms.map((room) => {
-                  const owner = createOwnerFromApi(room.other_user || {});
-                  return (
-                    <div
-                      key={room.id}
-                      onClick={() => onSelectChat(owner)}
-                      className="flex items-center gap-4 p-4 bg-white rounded-[2rem] shadow-sm border border-slate-50 active:scale-95 transition-transform cursor-pointer"
-                    >
-                      <div className="relative">
-                        <img
-                          src={owner.avatar}
-                          className="w-14 h-14 rounded-2xl object-cover cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                          alt={owner.name}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onViewOwner(owner);
-                          }}
-                        />
-                        {!!room.unread_count && (
-                          <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
-                            {room.unread_count}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <h4 className="font-bold text-slate-900 truncate text-sm">{owner.name}</h4>
-                          <span className="text-[9px] text-slate-400 font-medium">{formatTimestamp(room.last_message_time || room.updated_at)}</span>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">已匹配</p>
+                  <p className="mt-2 text-2xl font-black text-slate-900">{matchedOnly.length}</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">待回应</p>
+                  <p className="mt-2 text-2xl font-black text-slate-900">{pendingMatches.length}</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">会话中</p>
+                  <p className="mt-2 text-2xl font-black text-slate-900">{chatRooms.length}</p>
+                </div>
+              </div>
+
+              {pendingMatches.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">等待系统匹配</h3>
+                    <span className="text-[10px] font-bold text-amber-500">左滑喜欢后会先进入这里</span>
+                  </div>
+                  <div className="space-y-3">
+                    {pendingMatches.slice(0, 4).map((match) => {
+                      const owner = getCounterpartOwner(match, currentUser?.id);
+                      if (!owner) return null;
+                      const otherPet = match.user_a_id === currentUser?.id ? match.pet_b : match.pet_a;
+                      return (
+                        <div key={match.id} className="bg-amber-50 rounded-[2rem] p-4 border border-amber-100 flex items-center gap-4">
+                          <img
+                            src={owner.avatar}
+                            alt={owner.name}
+                            className="w-14 h-14 rounded-2xl object-cover cursor-pointer"
+                            onClick={() => onViewOwner(owner)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-900 truncate text-sm">{owner.name}</h4>
+                              <span className="px-2 py-0.5 rounded-full bg-white text-[9px] font-black text-amber-600">
+                                匹配度 {(Number(match.compatibility_score || 0) * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 truncate mt-1">
+                              {otherPet?.name || '对方宠物'} · {otherPet?.type || '宠物档案'} · 等待双方互相喜欢
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => onViewOwner(owner)}
+                            className="w-10 h-10 rounded-2xl bg-white text-amber-600 flex items-center justify-center shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-lg">visibility</span>
+                          </button>
                         </div>
-                        <p className="text-xs text-slate-500 truncate">{room.last_message || '已经互相喜欢，去打个招呼吧。'}</p>
-                      </div>
-                    </div>
-                  );
-                })
+                      );
+                    })}
+                  </div>
+                </div>
               )}
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">真实聊天</h3>
+                  <button onClick={() => void loadData()} className="text-[10px] font-bold text-primary">刷新</button>
+                </div>
+                {loading ? (
+                  <div className="bg-white rounded-[2rem] p-6 text-center text-sm text-slate-400 border border-slate-100">正在同步真实聊天数据…</div>
+                ) : chatRooms.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-6 text-center text-sm text-slate-400 border border-slate-100">还没有新的聊天，先去首页左滑喜欢几位吧。</div>
+                ) : (
+                  chatRooms.map((room) => {
+                    const owner = createOwnerFromApi(room.other_user || {});
+                    return (
+                      <div
+                        key={room.id}
+                        onClick={() => onSelectChat(owner, room.id)}
+                        className="flex items-center gap-4 p-4 bg-white rounded-[2rem] shadow-sm border border-slate-50 active:scale-95 transition-transform cursor-pointer"
+                      >
+                        <div className="relative">
+                          <img
+                            src={owner.avatar}
+                            className="w-14 h-14 rounded-2xl object-cover cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                            alt={owner.name}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onViewOwner(owner);
+                            }}
+                          />
+                          {!!room.unread_count && (
+                            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
+                              {room.unread_count}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center mb-1 gap-3">
+                            <h4 className="font-bold text-slate-900 truncate text-sm">{owner.name}</h4>
+                            <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">{formatTimestamp(room.last_message_time || room.updated_at)}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 truncate">{room.last_message || '已经互相喜欢，去打个招呼吧。'}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </motion.div>
           ) : (
             <motion.div
@@ -205,19 +300,23 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">真实记录</h3>
                 {petFeed.length === 0 ? (
                   <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-50 text-sm text-slate-400 text-center">
-                    这里会展示宠语翻译、AI回应和系统动态。
+                    这里会展示宠语翻译、AI 回应和系统动态。
                   </div>
                 ) : (
                   petFeed.map((item) => (
-                    <div key={item.id} className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-50 space-y-4">
-                      <div className="flex items-center justify-between">
+                    <button
+                      key={item.id}
+                      onClick={() => void handleNotificationClick('notificationId' in item ? item.notificationId : undefined)}
+                      className="w-full text-left bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-50 space-y-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
                         <div>
                           <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
                           <p className="text-[10px] text-slate-400 font-medium">{formatTimestamp(item.time)}</p>
                         </div>
-                        <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 ${'isRead' in item && !item.isRead ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                           <span className="material-symbols-outlined text-xs">neurology</span>
-                          已同步
+                          {'isRead' in item && !item.isRead ? '未读' : '已同步'}
                         </div>
                       </div>
 
@@ -230,7 +329,7 @@ export default function Messages({ onSelectChat, onViewOwner, userPet }: Message
                       <div className="bg-primary/5 rounded-2xl p-4 border border-primary/5">
                         <p className="text-sm text-slate-700 leading-relaxed font-medium">{item.body}</p>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>

@@ -1,8 +1,0 @@
-{
-  "name": "爪住",
-  "description": "一个结合现实宠物护理与云端AI伴侣的社交平台，为您和您的毛孩子开启奇幻之旅。",
-  "requestFramePermissions": [
-    "camera",
-    "geolocation"
-  ]
-}

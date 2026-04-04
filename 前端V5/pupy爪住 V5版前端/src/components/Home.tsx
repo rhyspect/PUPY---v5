@@ -36,7 +36,6 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<'like' | 'dislike' | null>(null);
-  const [showHeart, setShowHeart] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const x = useMotionValue(0);
@@ -85,9 +84,6 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
       return;
     }
 
-    setShowHeart(true);
-    window.setTimeout(() => setShowHeart(false), 900);
-
     if (!topCard.ownerId) {
       moveToNextCard('like');
       onMatch(topCard.owner);
@@ -98,7 +94,7 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
     try {
       await apiService.createMatch(topCard.ownerId, userPet.id, topCard.id);
       moveToNextCard('like');
-      window.setTimeout(() => onMatch(topCard.owner), 280);
+      onMatch(topCard.owner);
     } catch {
       moveToNextCard('like');
     } finally {
@@ -148,16 +144,6 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
     <div className="px-6 flex flex-col items-center min-h-[75vh]">
       <div className="relative w-full aspect-[3/4.2] mb-8">
         <AnimatePresence>
-          {showHeart && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0] }}
-              transition={{ duration: 0.8 }}
-              className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"
-            >
-              <span className="material-symbols-outlined text-9xl text-primary drop-shadow-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-            </motion.div>
-          )}
           {cards.map((pet, index) => {
             const isTop = index === 0;
             return (
@@ -194,13 +180,13 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
                   <>
                     <motion.div
                       style={{ opacity: likeOpacity }}
-                      className="absolute top-20 left-10 border-4 border-emerald-500 text-emerald-500 font-black text-4xl px-4 py-2 rounded-2xl -rotate-12 z-20 pointer-events-none"
+                      className="absolute top-20 left-10 border-4 border-emerald-500 text-emerald-500 font-black text-3xl px-4 py-2 rounded-2xl -rotate-12 z-20 pointer-events-none"
                     >
-                      喜欢
+                      待匹配
                     </motion.div>
                     <motion.div
                       style={{ opacity: dislikeOpacity }}
-                      className="absolute top-20 right-10 border-4 border-red-500 text-red-500 font-black text-4xl px-4 py-2 rounded-2xl rotate-12 z-20 pointer-events-none"
+                      className="absolute top-20 right-10 border-4 border-red-500 text-red-500 font-black text-3xl px-4 py-2 rounded-2xl rotate-12 z-20 pointer-events-none"
                     >
                       略过
                     </motion.div>
@@ -228,10 +214,10 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
                   </div>
 
                   <button
-                    onClick={() => onMatch(pet.owner)}
+                    onClick={() => onViewOwner(pet.owner)}
                     className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform"
                   >
-                    <span className="material-symbols-outlined text-xl">chat</span>
+                    <span className="material-symbols-outlined text-xl">visibility</span>
                   </button>
                 </div>
 
@@ -263,17 +249,17 @@ export default function Home({ onMatch, onViewOwner, userPet }: HomeProps) {
 
       <div className="flex items-center justify-center gap-8 pb-6">
         <button
-          onClick={() => void swipe('dislike')}
-          className="w-16 h-16 rounded-[2rem] bg-white flex items-center justify-center text-red-400 shadow-xl hover:scale-110 hover:bg-red-50 active:scale-90 transition-all border border-slate-100"
-        >
-          <span className="material-symbols-outlined text-3xl">close</span>
-        </button>
-        <button
           onClick={() => void swipe('like')}
           disabled={isSubmitting}
           className="w-20 h-20 rounded-[2.2rem] bg-primary text-white flex items-center justify-center shadow-2xl hover:scale-110 hover:shadow-primary/40 active:scale-90 transition-all shadow-primary/30 disabled:opacity-60"
         >
           <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
+        </button>
+        <button
+          onClick={() => void swipe('dislike')}
+          className="w-16 h-16 rounded-[2rem] bg-white flex items-center justify-center text-red-400 shadow-xl hover:scale-110 hover:bg-red-50 active:scale-90 transition-all border border-slate-100"
+        >
+          <span className="material-symbols-outlined text-3xl">close</span>
         </button>
       </div>
 

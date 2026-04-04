@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "SUPABASE_URL": "https://mpvlgtuexrvrmvaxhrgo.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wdmxndHVleHJ2cm12YXhocmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjQ1NjQsImV4cCI6MjA5MDc0MDU2NH0.ytWdz5vL9ymP7qPue4XxoONKs6lCKkDOUcNs2hrcHl4",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wdmxndHVleHJ2cm12YXhocmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTE2NDU2NCwiZXhwIjoyMDkwNzQwNTY0fQ.qoe5awq8s9JRYBYIQpna8qa7P5V25uIsUQn2zdK95s0",
+    "JWT_SECRET": "pupy_jwt_secret_super_secret_key_2024",
+    "ADMIN_EMAILS": "rhyssvv@gmail.com"
+  }
+}

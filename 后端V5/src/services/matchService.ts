@@ -1,9 +1,12 @@
+﻿import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../config/supabase.js';
-import { Match, ApiResponse, PaginatedResponse } from '../types/index.js';
-import { v4 as uuidv4 } from 'uuid';
+import type { ApiResponse, Match, PaginatedResponse } from '../types/index.js';
+
+function normalizePersonality(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
 
 export class MatchService {
-  // 计算兼容性分数
   static calculateCompatibilityScore(
     petA: any,
     petB: any,
@@ -12,21 +15,28 @@ export class MatchService {
   ): number {
     let score = 0;
 
-    // 宠物类型相同 +30
-    if (petA.type === petB.type) score += 30;
-
-    // 性格互补 +25
-    if (
-      (petA.personality === 'E系浓宠' && petB.personality === 'I系淡宠') ||
-      (petA.personality === 'I系淡宠' && petB.personality === 'E系浓宠')
-    ) {
-      score += 25;
-    } else if (petA.personality === petB.personality) {
-      score += 15;
+    if (petA.type && petA.type === petB.type) {
+      score += 30;
     }
 
-    // 地理位置相近 +20
-    if (ownerA.resident_city === ownerB.resident_city) {
+    const personalityA = normalizePersonality(petA.personality);
+    const personalityB = normalizePersonality(petB.personality);
+    if (personalityA && personalityB) {
+      if (personalityA === personalityB) {
+        score += 20;
+      } else if (
+        (personalityA.includes('外向') && personalityB.includes('温柔')) ||
+        (personalityB.includes('外向') && personalityA.includes('温柔')) ||
+        (personalityA.includes('活泼') && personalityB.includes('稳定')) ||
+        (personalityB.includes('活泼') && personalityA.includes('稳定'))
+      ) {
+        score += 15;
+      } else {
+        score += 8;
+      }
+    }
+
+    if (ownerA.resident_city && ownerA.resident_city === ownerB.resident_city) {
       score += 20;
     } else if (
       ownerA.frequent_cities?.includes(ownerB.resident_city) ||
@@ -35,8 +45,7 @@ export class MatchService {
       score += 10;
     }
 
-    // MBTI 兼容性 +15
-    const compatibleMbtis: { [key: string]: string[] } = {
+    const compatibleMbtis: Record<string, string[]> = {
       ENFP: ['INTJ', 'INFJ'],
       ENTP: ['INTJ', 'INTP'],
       ENFJ: ['INFP', 'ISFP'],
@@ -58,19 +67,16 @@ export class MatchService {
       compatibleMbtis[ownerB.mbti]?.includes(ownerA.mbti)
     ) {
       score += 15;
-    } else if (ownerA.mbti === ownerB.mbti) {
-      score += 5;
+    } else if (ownerA.mbti && ownerA.mbti === ownerB.mbti) {
+      score += 8;
     }
 
-    // 兴趣爱好相交 +10
-    const commonHobbies = ownerA.hobbies?.filter((h: string) =>
-      ownerB.hobbies?.includes(h),
-    ).length || 0;
+    const commonHobbies = ownerA.hobbies?.filter((hobby: string) => ownerB.hobbies?.includes(hobby)).length || 0;
     if (commonHobbies > 0) {
       score += Math.min(10, commonHobbies * 3);
     }
 
-    return Math.min(100, score);
+    return Number((Math.min(100, score) / 100).toFixed(2));
   }
 
   static async createMatch(
@@ -80,25 +86,21 @@ export class MatchService {
     petBId: string,
   ): Promise<ApiResponse<Match>> {
     try {
-      // 检查是否已存在匹配
       const { data: existingMatch } = await supabase
         .from('matches')
         .select('*')
-        .or(
-          `and(user_a_id.eq.${userAId},user_b_id.eq.${userBId}),and(user_a_id.eq.${userBId},user_b_id.eq.${userAId})`,
-        )
+        .or(`and(user_a_id.eq.${userAId},user_b_id.eq.${userBId}),and(user_a_id.eq.${userBId},user_b_id.eq.${userAId})`)
         .limit(1);
 
       if (existingMatch && existingMatch.length > 0) {
         return {
           success: false,
-          error: '已经存在匹配记录',
+          error: '匹配记录已存在。',
           code: 400,
         };
       }
 
-      // 获取宠物和用户信息以计算兼容性
-      const [petA, petB, userA, userB] = await Promise.all([
+      const [petAResult, petBResult, userAResult, userBResult] = await Promise.all([
         supabase.from('pets').select('*').eq('id', petAId).limit(1),
         supabase.from('pets').select('*').eq('id', petBId).limit(1),
         supabase.from('users').select('*').eq('id', userAId).limit(1),
@@ -106,50 +108,50 @@ export class MatchService {
       ]);
 
       if (
-        !petA.data?.length ||
-        !petB.data?.length ||
-        !userA.data?.length ||
-        !userB.data?.length
+        !petAResult.data?.length ||
+        !petBResult.data?.length ||
+        !userAResult.data?.length ||
+        !userBResult.data?.length
       ) {
         return {
           success: false,
-          error: '宠物或用户不存在',
+          error: '宠物或用户不存在。',
           code: 404,
         };
       }
 
       const compatibilityScore = this.calculateCompatibilityScore(
-        petA.data[0],
-        petB.data[0],
-        userA.data[0],
-        userB.data[0],
+        petAResult.data[0],
+        petBResult.data[0],
+        userAResult.data[0],
+        userBResult.data[0],
       );
 
       const matchId = uuidv4();
-      const { error } = await supabase
-        .from('matches')
-        .insert({
-          id: matchId,
-          user_a_id: userAId,
-          user_b_id: userBId,
-          pet_a_id: petAId,
-          pet_b_id: petBId,
-          compatibility_score: compatibilityScore,
-          status: 'pending',
-        });
+      const { error } = await supabase.from('matches').insert({
+        id: matchId,
+        user_a_id: userAId,
+        user_b_id: userBId,
+        pet_a_id: petAId,
+        pet_b_id: petBId,
+        compatibility_score: compatibilityScore,
+        status: 'pending',
+      });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       const match = await this.getMatchById(matchId);
       return {
         success: true,
         data: match as Match,
-        message: '匹配创建成功',
+        message: '喜欢已记录，等待系统匹配。',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '创建匹配失败',
+        error: error.message || '创建匹配失败。',
         code: 500,
       };
     }
@@ -157,17 +159,11 @@ export class MatchService {
 
   static async getMatchById(matchId: string): Promise<Match | null> {
     try {
-      const { data, error } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('id', matchId)
-        .limit(1);
-
+      const { data, error } = await supabase.from('matches').select('*').eq('id', matchId).limit(1);
       if (error || !data || data.length === 0) {
         return null;
       }
-
-      return data[0];
+      return data[0] as Match;
     } catch {
       return null;
     }
@@ -186,18 +182,18 @@ export class MatchService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('更新失败');
+        throw error || new Error('更新失败。');
       }
 
       return {
         success: true,
         data: data[0],
-        message: '更新成功',
+        message: '匹配状态已更新。',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '更新失败',
+        error: error.message || '更新匹配状态失败。',
         code: 500,
       };
     }
@@ -205,8 +201,8 @@ export class MatchService {
 
   static async getMatchesForUser(
     userId: string,
-    page: number = 1,
-    limit: number = 20,
+    page = 1,
+    limit = 20,
   ): Promise<PaginatedResponse<Match & { pet_a: any; pet_b: any; user_a: any; user_b: any }>> {
     try {
       const offset = (page - 1) * limit;
@@ -231,7 +227,6 @@ export class MatchService {
       ]);
 
       const total = countRes.count || 0;
-
       return {
         success: true,
         data: matchesRes.data || [],
@@ -241,14 +236,14 @@ export class MatchService {
           limit,
           total_pages: Math.ceil(total / limit),
         },
-        message: '获取成功',
+        message: '匹配记录已加载。',
       };
     } catch (error: any) {
       return {
         success: false,
         data: [],
         pagination: { total: 0, page: 1, limit, total_pages: 0 },
-        error: error.message || '获取失败',
+        error: error.message || '加载匹配记录失败。',
       };
     }
   }
