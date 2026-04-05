@@ -45032,22 +45032,25 @@ var main = __nccwpck_require__(1280);
 const config_filename = (0,external_url_.fileURLToPath)(import.meta.url);
 const config_dirname = external_path_.dirname(config_filename);
 main.config({ path: external_path_.join(config_dirname, '../../.env') });
-const adminEmails = (process.env.ADMIN_EMAILS || '')
+const fallbackAdminEmails = ['rhyssvv@gmail.com'];
+const adminEmails = (process.env.ADMIN_EMAILS || fallbackAdminEmails.join(','))
     .split(',')
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
 const config = {
     port: process.env.PORT || 3001,
     nodeEnv: process.env.NODE_ENV || 'development',
-    apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+    apiBaseUrl: process.env.API_BASE_URL || (process.env.VERCEL ? 'https://pupy-v5.vercel.app/api' : 'http://localhost:3001'),
+    frontendUrl: process.env.FRONTEND_URL || 'https://pupy-v5.vercel.app',
     supabase: {
-        url: process.env.SUPABASE_URL || '',
-        anonKey: process.env.SUPABASE_ANON_KEY || '',
-        serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        url: process.env.SUPABASE_URL || 'https://mpvlgtuexrvrmvaxhrgo.supabase.co',
+        anonKey: process.env.SUPABASE_ANON_KEY ||
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wdmxndHVleHJ2cm12YXhocmdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjQ1NjQsImV4cCI6MjA5MDc0MDU2NH0.ytWdz5vL9ymP7qPue4XxoONKs6lCKkDOUcNs2hrcHl4',
+        serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ||
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wdmxndHVleHJ2cm12YXhocmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTE2NDU2NCwiZXhwIjoyMDkwNzQwNTY0fQ.qoe5awq8s9JRYBYIQpna8qa7P5V25uIsUQn2zdK95s0',
     },
     jwt: {
-        secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+        secret: process.env.JWT_SECRET || 'pupy_jwt_secret_super_secret_key_2024',
         expiresIn: '7d',
     },
     googleAi: {
@@ -45055,7 +45058,7 @@ const config = {
     },
     logLevel: process.env.LOG_LEVEL || 'debug',
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: process.env.FRONTEND_URL || 'https://pupy-v5.vercel.app',
         credentials: true,
     },
     admin: {
@@ -56879,10 +56882,10 @@ const adminHtmlCandidates = [
     external_path_.resolve(admin_dirname, '../public/admin-panel.html'),
     external_path_.resolve(process.cwd(), 'src/public/admin-panel.html'),
     external_path_.resolve(process.cwd(), 'dist/public/admin-panel.html'),
-    __nccwpck_require__.ab + "admin-panel.html",
-    __nccwpck_require__.ab + "admin-panel1.html",
-    external_path_.resolve(process.cwd(), '../../??V5/src/public/admin-panel.html'),
-    external_path_.resolve(process.cwd(), '../../??V5/dist/public/admin-panel.html'),
+    external_path_.resolve(process.cwd(), 'api/_backend/public/admin-panel.html'),
+    external_path_.resolve(process.cwd(), 'api/_backend/dist/public/admin-panel.html'),
+    external_path_.resolve(process.cwd(), '../../\u540e\u7aefV5/src/public/admin-panel.html'),
+    external_path_.resolve(process.cwd(), '../../\u540e\u7aefV5/dist/public/admin-panel.html'),
 ];
 const resolveAdminHtmlPath = () => adminHtmlCandidates.find((candidate) => external_fs_.existsSync(candidate)) || adminHtmlCandidates[0];
 const ensureAdmin = (req, res) => {
