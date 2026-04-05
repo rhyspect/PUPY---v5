@@ -30,7 +30,7 @@ export class AuthService {
       if (existingUser && existingUser.length > 0) {
         return {
           success: false,
-          error: 'User already exists or the email is already in use.',
+          error: '???????????',
           code: 400,
         };
       }
@@ -69,18 +69,18 @@ export class AuthService {
 
       const user = await this.getUserById(userId);
       if (!user) {
-        throw new Error('User was created but could not be read back.');
+        throw new Error('??????????????');
       }
 
       return {
         success: true,
         data: { user: this.toSafeUser(user), token },
-        message: 'Registration succeeded.',
+        message: '?????',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Registration failed.',
+        error: error.message || '?????',
         code: 500,
       };
     }
@@ -93,7 +93,7 @@ export class AuthService {
       if (error || !userData || userData.length === 0) {
         return {
           success: false,
-          error: 'User not found.',
+          error: '??????',
           code: 401,
         };
       }
@@ -103,7 +103,7 @@ export class AuthService {
       if (!passwordMatch) {
         return {
           success: false,
-          error: 'Password is incorrect.',
+          error: '?????',
           code: 401,
         };
       }
@@ -119,12 +119,12 @@ export class AuthService {
       return {
         success: true,
         data: { user: this.toSafeUser(user), token },
-        message: 'Login succeeded.',
+        message: '?????',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Login failed.',
+        error: error.message || '?????',
         code: 500,
       };
     }
@@ -166,7 +166,7 @@ export class AuthService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('Update failed.');
+        throw error || new Error('?????');
       }
 
       return {
@@ -177,7 +177,7 @@ export class AuthService {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || 'Update failed.',
+        error: error.message || '?????',
         code: 500,
       };
     }

@@ -1,33 +1,65 @@
-import Express from 'express';
+﻿import Express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config from '../config/index.js';
-import { AuthRequest, authMiddleware } from '../middleware/authMiddleware.js';
+import { type AuthRequest, authMiddleware } from '../middleware/authMiddleware.js';
 import AdminService from '../services/adminService.js';
 import { getPaginationParams } from '../utils/pagination.js';
+import { pickLocaleText, resolveRequestLocale } from '../utils/locale.js';
 
 const router = Express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const adminHtmlPath = path.resolve(__dirname, '../public/admin-panel.html');
+
+const adminHtmlCandidates = [
+  path.resolve(__dirname, '../public/admin-panel.html'),
+  path.resolve(process.cwd(), 'src/public/admin-panel.html'),
+  path.resolve(process.cwd(), 'dist/public/admin-panel.html'),
+  path.resolve(process.cwd(), '../../后端V5/src/public/admin-panel.html'),
+  path.resolve(process.cwd(), '../../后端V5/dist/public/admin-panel.html'),
+];
+
+const resolveAdminHtmlPath = () =>
+  adminHtmlCandidates.find((candidate) => fs.existsSync(candidate)) || adminHtmlCandidates[0];
 
 const ensureAdmin = (req: AuthRequest, res: Express.Response) => {
+  const locale = resolveRequestLocale(req);
   const email = req.user?.email?.toLowerCase();
+
   if (!email) {
-    res.status(401).json({ success: false, error: '未认证', code: 401 });
+    res.status(401).json({
+      success: false,
+      error: pickLocaleText(locale, '尚未完成身份认证。', 'Authentication required.'),
+      code: 401,
+    });
     return false;
   }
 
   if (!config.admin.allowedEmails.includes(email)) {
-    res.status(403).json({ success: false, error: '当前账号不在 ADMIN_EMAILS 白名单中', code: 403 });
+    res.status(403).json({
+      success: false,
+      error: pickLocaleText(locale, '当前账号没有后台访问权限。', 'This account does not have admin access.'),
+      code: 403,
+    });
     return false;
   }
 
   return true;
 };
 
+const sendAdminError = (req: AuthRequest | Express.Request, res: Express.Response, error: unknown) => {
+  const locale = resolveRequestLocale(req as Express.Request);
+  console.error('Admin route error:', error);
+  res.status(500).json({
+    success: false,
+    error: pickLocaleText(locale, '后台服务暂时不可用。', 'Admin service is temporarily unavailable.'),
+    code: 500,
+  });
+};
+
 router.get('/panel', (_req: Express.Request, res: Express.Response) => {
-  res.sendFile(adminHtmlPath);
+  res.sendFile(resolveAdminHtmlPath());
 });
 
 router.get('/overview', authMiddleware, async (req: AuthRequest, res: Express.Response) => {
@@ -36,8 +68,7 @@ router.get('/overview', authMiddleware, async (req: AuthRequest, res: Express.Re
     const result = await AdminService.getOverview();
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin overview error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 
@@ -49,8 +80,7 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Express.Respo
     const result = await AdminService.getUsers(page, limit, keyword);
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin users error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 
@@ -61,8 +91,7 @@ router.patch('/users/:userId/verification', authMiddleware, async (req: AuthRequ
     const result = await AdminService.updateUserVerification(req.params.userId, isVerified);
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin verify user error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 
@@ -73,8 +102,7 @@ router.get('/pets', authMiddleware, async (req: AuthRequest, res: Express.Respon
     const result = await AdminService.getPets(page, limit);
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin pets error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 
@@ -85,8 +113,7 @@ router.get('/market', authMiddleware, async (req: AuthRequest, res: Express.Resp
     const result = await AdminService.getMarketProducts(page, limit);
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin market error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 
@@ -97,8 +124,7 @@ router.get('/breeding', authMiddleware, async (req: AuthRequest, res: Express.Re
     const result = await AdminService.getBreedingRequests(page, limit);
     res.status(result.success ? 200 : 500).json(result);
   } catch (error) {
-    console.error('Admin breeding error:', error);
-    res.status(500).json({ success: false, error: '服务器错误', code: 500 });
+    sendAdminError(req, res, error);
   }
 });
 

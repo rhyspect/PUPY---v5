@@ -1,4 +1,5 @@
-﻿import { AnimatePresence, motion } from 'motion/react';
+﻿import { useEffect, useId } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 interface FeatureModalProps {
   open: boolean;
@@ -21,6 +22,28 @@ export default function FeatureModal({
   onClose,
   onConfirm,
 }: FeatureModalProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.classList.add('modal-open');
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.classList.remove('modal-open');
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -30,44 +53,75 @@ export default function FeatureModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/45 backdrop-blur-md"
           />
           <motion.div
-            initial={{ scale: 0.92, opacity: 0, y: 12 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: 12 }}
-            className="relative w-full max-w-sm bg-white rounded-[2.5rem] p-8 space-y-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={description ? descriptionId : undefined}
+            initial={prefersReducedMotion ? { opacity: 0 } : { scale: 0.92, opacity: 0, y: 16 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { scale: 1, opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0.96, opacity: 0, y: 12 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            className="ambient-card glass relative w-full max-w-sm rounded-[2.8rem] p-8 shadow-2xl"
           >
-            <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">{title}</h3>
-              {description && <p className="text-sm text-slate-500 leading-relaxed">{description}</p>}
-            </div>
+            <button
+              type="button"
+              aria-label="关闭弹窗"
+              onClick={onClose}
+              className="absolute right-5 top-5 z-20 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/75 text-slate-500 transition hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
 
-            {items.length > 0 && (
-              <div className="space-y-3">
-                {items.map((item) => (
-                  <div key={item} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600">
-                    {item}
-                  </div>
-                ))}
+            <div className="relative z-10 space-y-6">
+              <div className="space-y-2 pr-10">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">PUPY</p>
+                <h3 id={titleId} className="text-[1.75rem] leading-tight font-black text-slate-900 tracking-tight">
+                  {title}
+                </h3>
+                {description && (
+                  <p id={descriptionId} className="text-sm leading-relaxed text-slate-600">
+                    {description}
+                  </p>
+                )}
               </div>
-            )}
 
-            <div className="flex gap-3">
-              {cancelLabel && (
-                <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 font-black">
-                  {cancelLabel}
-                </button>
+              {items.length > 0 && (
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-[1.6rem] border border-white/60 bg-white/70 px-4 py-3 text-sm font-medium text-slate-600 shadow-sm"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
               )}
-              <button
-                onClick={() => {
-                  onConfirm?.();
-                  onClose();
-                }}
-                className="flex-1 py-4 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/20"
-              >
-                {confirmLabel}
-              </button>
+
+              <div className="flex gap-3">
+                {cancelLabel && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 rounded-[1.6rem] border border-white/70 bg-white/80 py-4 font-black text-slate-500"
+                  >
+                    {cancelLabel}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onConfirm?.();
+                    onClose();
+                  }}
+                  className="flex-1 rounded-[1.6rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20"
+                >
+                  {confirmLabel}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

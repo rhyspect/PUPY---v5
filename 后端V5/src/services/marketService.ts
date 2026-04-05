@@ -2,6 +2,53 @@
 import { MarketProduct, ApiResponse, PaginatedResponse } from '../types/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
+const SAFE_SELLER_FIELDS = `
+  id,
+  username,
+  email,
+  age,
+  gender,
+  resident_city,
+  frequent_cities,
+  hobbies,
+  mbti,
+  signature,
+  avatar_url,
+  bio,
+  is_verified,
+  created_at,
+  updated_at,
+  last_login
+`;
+
+const SAFE_PET_FIELDS = `
+  id,
+  user_id,
+  name,
+  type,
+  breed,
+  gender,
+  personality,
+  age,
+  weight,
+  images,
+  bio,
+  vaccinated,
+  health_status,
+  pedigree_info,
+  is_digital_twin,
+  digital_twin_data,
+  created_at,
+  updated_at
+`;
+
+const MARKET_WITH_RELATIONS_SELECT = `*,
+  seller:users!market_products_seller_id_fkey(${SAFE_SELLER_FIELDS}),
+  pet:pets!market_products_pet_id_fkey(${SAFE_PET_FIELDS})`;
+
+const SELLER_PRODUCTS_SELECT = `*,
+  pet:pets!market_products_pet_id_fkey(${SAFE_PET_FIELDS})`;
+
 export class MarketService {
   static async createProduct(
     sellerId: string,
@@ -73,7 +120,7 @@ export class MarketService {
       const [productsRes, countRes] = await Promise.all([
         supabase
           .from('market_products')
-          .select('*, seller:users(*), pet:pets(*)')
+          .select(MARKET_WITH_RELATIONS_SELECT)
           .eq('category', category)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
@@ -119,7 +166,7 @@ export class MarketService {
       const [productsRes, countRes] = await Promise.all([
         supabase
           .from('market_products')
-          .select('*, seller:users(*), pet:pets(*)')
+          .select(MARKET_WITH_RELATIONS_SELECT)
           .eq('status', 'active')
           .or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%`)
           .order('created_at', { ascending: false })
@@ -160,7 +207,7 @@ export class MarketService {
     try {
       const { data, error } = await supabase
         .from('market_products')
-        .select('*, pet:pets(*)')
+        .select(SELLER_PRODUCTS_SELECT)
         .eq('seller_id', sellerId)
         .order('created_at', { ascending: false });
 
@@ -243,7 +290,7 @@ export class MarketService {
       const [productsRes, countRes] = await Promise.all([
         supabase
           .from('market_products')
-          .select('*, seller:users(*), pet:pets(*)')
+          .select(MARKET_WITH_RELATIONS_SELECT)
           .eq('type', 'breeding')
           .eq('status', 'active')
           .order('created_at', { ascending: false })
@@ -286,7 +333,7 @@ export class MarketService {
     try {
       const query = supabase
         .from('market_products')
-        .select('*, seller:users(*), pet:pets(*)')
+        .select(MARKET_WITH_RELATIONS_SELECT)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(limit);

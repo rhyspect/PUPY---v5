@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import { pickLocaleText, resolveRequestLocale } from '../utils/locale.js';
 
 const configuredOrigin = process.env.FRONTEND_URL || '';

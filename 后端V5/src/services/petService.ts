@@ -2,11 +2,11 @@
 import { supabase } from '../config/supabase.js';
 import type { ApiResponse, CreatePetRequest, Pet } from '../types/index.js';
 
-function normalizeOppositeGender(gender?: string) {
-  const normalized = (gender || '').toLowerCase();
-  if (normalized === 'male' || normalized === '公') return 'female';
-  if (normalized === 'female' || normalized === '母') return 'male';
-  return gender;
+function normalizeOppositeGenderOptions(gender?: string) {
+  const normalized = (gender || '').trim().toLowerCase();
+  if (normalized === 'male' || normalized === '公') return ['female', '母'];
+  if (normalized === 'female' || normalized === '母') return ['male', '公'];
+  return gender ? [gender] : [];
 }
 
 export class PetService {
@@ -171,15 +171,22 @@ export class PetService {
     offset = 0,
   ): Promise<ApiResponse<Pet[]>> {
     try {
-      const targetGender = normalizeOppositeGender(gender);
-      const { data, error } = await supabase
+      const targetGenderOptions = normalizeOppositeGenderOptions(gender);
+      const query = supabase
         .from('pets')
         .select('*, owner:users!pets_user_id_fkey(id, username, avatar_url)')
         .eq('type', petType)
-        .eq('gender', targetGender || gender)
         .eq('health_status', 'healthy')
         .eq('vaccinated', true)
         .range(offset, offset + limit - 1);
+
+      if (targetGenderOptions.length > 0) {
+        query.in('gender', targetGenderOptions);
+      } else {
+        query.eq('gender', gender);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         throw error;
@@ -219,50 +226,72 @@ export class PetService {
         }
       }
 
-      const query = supabase
-        .from('pets')
-        .select(
-          `*,
-          owner:users!pets_user_id_fkey(
-            id,
-            username,
-            age,
-            gender,
-            resident_city,
-            frequent_cities,
-            hobbies,
-            mbti,
-            signature,
-            avatar_url,
-            bio,
-            is_verified
-          )`,
-        )
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      const genderOptions = normalizeOppositeGenderOptions(petGender);
+      const excludedList = Array.from(excludedUserIds);
+      const variants = [
+        { petType, genderOptions },
+        { petType: undefined, genderOptions },
+        { petType, genderOptions: [] as string[] },
+        { petType: undefined, genderOptions: [] as string[] },
+      ];
+      const seenKeys = new Set<string>();
+      let discoveryRows: any[] = [];
 
-      query.not('user_id', 'in', `(${Array.from(excludedUserIds).join(',')})`);
-
-      if (petType) {
-        query.eq('type', petType);
-      }
-
-      if (petGender) {
-        const targetGender = normalizeOppositeGender(petGender);
-        if (targetGender) {
-          query.eq('gender', targetGender);
+      for (const variant of variants) {
+        const variantKey = JSON.stringify(variant);
+        if (seenKeys.has(variantKey)) {
+          continue;
         }
-      }
+        seenKeys.add(variantKey);
 
-      const { data, error } = await query;
+        const query = supabase
+          .from('pets')
+          .select(
+            `*,
+            owner:users!pets_user_id_fkey(
+              id,
+              username,
+              age,
+              gender,
+              resident_city,
+              frequent_cities,
+              hobbies,
+              mbti,
+              signature,
+              avatar_url,
+              bio,
+              is_verified
+            )`,
+          )
+          .order('created_at', { ascending: false })
+          .limit(limit);
 
-      if (error) {
-        throw error;
+        if (excludedList.length > 0) {
+          query.not('user_id', 'in', `(${excludedList.join(',')})`);
+        }
+
+        if (variant.petType) {
+          query.eq('type', variant.petType);
+        }
+
+        if (variant.genderOptions.length > 0) {
+          query.in('gender', variant.genderOptions);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          throw error;
+        }
+
+        discoveryRows = data || [];
+        if (discoveryRows.length > 0) {
+          break;
+        }
       }
 
       return {
         success: true,
-        data: data || [],
+        data: discoveryRows,
         message: 'Discovery feed loaded.',
       };
     } catch (error: any) {

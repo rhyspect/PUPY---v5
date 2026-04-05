@@ -1,5 +1,45 @@
 ﻿import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../config/supabase.js';
+
+const SAFE_MATCH_USER_FIELDS = `
+  id,
+  username,
+  email,
+  age,
+  gender,
+  resident_city,
+  frequent_cities,
+  hobbies,
+  mbti,
+  signature,
+  avatar_url,
+  bio,
+  is_verified,
+  created_at,
+  updated_at,
+  last_login
+`;
+
+const SAFE_MATCH_PET_FIELDS = `
+  id,
+  user_id,
+  name,
+  type,
+  breed,
+  gender,
+  personality,
+  age,
+  weight,
+  images,
+  bio,
+  vaccinated,
+  health_status,
+  pedigree_info,
+  is_digital_twin,
+  digital_twin_data,
+  created_at,
+  updated_at
+`;
 import type { ApiResponse, Match, PaginatedResponse } from '../types/index.js';
 
 function normalizePersonality(value: unknown) {
@@ -212,10 +252,10 @@ export class MatchService {
           .from('matches')
           .select(
             `*,
-            pet_a:pets!matches_pet_a_id_fkey(*),
-            pet_b:pets!matches_pet_b_id_fkey(*),
-            user_a:users!matches_user_a_id_fkey(*),
-            user_b:users!matches_user_b_id_fkey(*)`,
+            pet_a:pets!matches_pet_a_id_fkey(${SAFE_MATCH_PET_FIELDS}),
+            pet_b:pets!matches_pet_b_id_fkey(${SAFE_MATCH_PET_FIELDS}),
+            user_a:users!matches_user_a_id_fkey(${SAFE_MATCH_USER_FIELDS}),
+            user_b:users!matches_user_b_id_fkey(${SAFE_MATCH_USER_FIELDS})`,
           )
           .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
           .order('created_at', { ascending: false })

@@ -5,31 +5,72 @@ import apiService, { type AdminOverview } from '../services/api';
 interface AdminDashboardProps {
   onBack: () => void;
   currentUserEmail?: string | null;
+  canAccess: boolean;
 }
 
-export default function AdminDashboard({ onBack, currentUserEmail }: AdminDashboardProps) {
+function EmptyCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="soft-panel rounded-[1.7rem] border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+      <p className="font-black text-slate-700">{title}</p>
+      <p className="mt-1 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+export default function AdminDashboard({ onBack, currentUserEmail, canAccess }: AdminDashboardProps) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadOverview = async () => {
+    if (!canAccess) {
+      setIsLoading(false);
+      setOverview(null);
+      setError('\u5f53\u524d\u8d26\u53f7\u6682\u65e0\u540e\u53f0\u6743\u9650\u3002');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiService.getAdminOverview();
+      startTransition(() => {
+        setOverview(response.data || null);
+        setError(null);
+      });
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : '后台总览加载失败。';
+      startTransition(() => {
+        setError(message);
+        setOverview(null);
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     let alive = true;
 
-    const loadOverview = async () => {
-      setIsLoading(true);
-      setError(null);
+    const bootstrap = async () => {
+      if (!canAccess) {
+        setOverview(null);
+        setError('\u5f53\u524d\u8d26\u53f7\u6682\u65e0\u540e\u53f0\u6743\u9650\u3002');
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const response = await apiService.getAdminOverview();
         if (!alive) return;
-
         startTransition(() => {
           setOverview(response.data || null);
           setError(null);
         });
       } catch (loadError) {
         if (!alive) return;
-        const message = loadError instanceof Error ? loadError.message : 'Failed to load admin overview.';
+        const message = loadError instanceof Error ? loadError.message : '后台总览加载失败。';
         startTransition(() => {
           setError(message);
           setOverview(null);
@@ -41,75 +82,86 @@ export default function AdminDashboard({ onBack, currentUserEmail }: AdminDashbo
       }
     };
 
-    void loadOverview();
-
+    void bootstrap();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [canAccess]);
 
   const stats = overview?.stats
     ? [
-        { label: 'Users', value: overview.stats.users, icon: 'group' },
-        { label: 'Pets', value: overview.stats.pets, icon: 'pets' },
-        { label: 'Matches', value: overview.stats.matches, icon: 'favorite' },
-        { label: 'Messages', value: overview.stats.messages, icon: 'chat' },
-        { label: 'Diaries', value: overview.stats.diaries, icon: 'menu_book' },
-        { label: 'Products', value: overview.stats.products, icon: 'shopping_bag' },
+        { label: '用户', value: overview.stats.users, icon: 'group' },
+        { label: '宠物', value: overview.stats.pets, icon: 'pets' },
+        { label: '匹配', value: overview.stats.matches, icon: 'favorite' },
+        { label: '消息', value: overview.stats.messages, icon: 'chat' },
+        { label: '日记', value: overview.stats.diaries, icon: 'menu_book' },
+        { label: '商品', value: overview.stats.products, icon: 'shopping_bag' },
       ]
     : [];
 
   return (
-    <div className="fixed inset-0 z-[180] bg-surface flex flex-col max-w-md mx-auto">
-      <header className="p-6 flex items-center gap-4 bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-100">
-        <button onClick={onBack} className="p-2 text-slate-400 hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">arrow_back_ios</span>
-        </button>
-        <div>
-          <h2 className="text-xl font-black font-headline text-slate-900 tracking-tight">Platform Overview</h2>
-          <p className="text-[11px] font-bold tracking-[0.18em] text-slate-400 uppercase">Backend panel</p>
+    <div className="fixed inset-0 z-[180] mx-auto flex max-w-md flex-col bg-surface">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(198,245,223,0.9),transparent_66%)]" />
+      <header className="relative z-10 px-5 pt-4">
+        <div className="glass flex items-center gap-4 rounded-[2rem] border border-white/60 px-5 py-4">
+          <button onClick={onBack} className="rounded-2xl bg-white/70 p-2 text-slate-500 transition hover:text-primary" aria-label="返回设置">
+            <span className="material-symbols-outlined">arrow_back_ios_new</span>
+          </button>
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary/70">{'\u540e\u53f0'}</p>
+            <h2 className="text-xl font-black tracking-tight text-slate-900">平台运营总览</h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">后台管理入口</p>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 pb-10 space-y-6 no-scrollbar">
-        <motion.section
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900 rounded-[2.5rem] p-6 text-white relative overflow-hidden"
-        >
+      <div className="relative z-10 flex-1 space-y-5 overflow-y-auto p-5 pb-10 no-scrollbar">
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-[2.4rem] bg-slate-900 p-6 text-white shadow-2xl shadow-slate-900/15">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.24),transparent_55%)]" />
           <div className="relative space-y-3">
-            <p className="text-[11px] font-black tracking-[0.18em] uppercase text-white/50">Signed in as</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/50">当前管理员</p>
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h3 className="text-2xl font-black italic tracking-tight">Control Tower</h3>
-                <p className="text-sm text-white/70 mt-1">{currentUserEmail || 'No active account'}</p>
+                <h3 className="text-2xl font-black tracking-tight">{'\u5e73\u53f0\u63a7\u5236\u5854'}</h3>
+                <p className="mt-1 text-sm text-white/70">{currentUserEmail || '尚未识别登录账号'}</p>
               </div>
-              <div className="w-14 h-14 rounded-[1.4rem] bg-white/10 backdrop-blur flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl text-emerald-300">monitoring</span>
+              <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem] bg-white/10 text-emerald-300 backdrop-blur">
+                <span className="material-symbols-outlined text-3xl">monitoring</span>
               </div>
             </div>
           </div>
         </motion.section>
 
         {isLoading && (
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 space-y-3">
-            <div className="h-5 w-40 rounded-full bg-slate-100 animate-pulse" />
+          <div className="frost-card space-y-3 rounded-[2rem] p-6">
+            <div className="h-5 w-40 animate-pulse rounded-full bg-slate-100" />
             <div className="h-20 rounded-[1.8rem] bg-slate-100 animate-pulse" />
             <div className="h-20 rounded-[1.8rem] bg-slate-100 animate-pulse" />
           </div>
         )}
 
         {!isLoading && error && (
-          <div className="bg-white rounded-[2.5rem] border border-red-100 shadow-sm p-6 space-y-3">
+          <div className="frost-card space-y-4 rounded-[2rem] border border-red-100 p-6">
             <div className="flex items-center gap-3 text-red-500">
               <span className="material-symbols-outlined">shield_lock</span>
-              <h3 className="font-black text-slate-900">Admin access not ready</h3>
+              <h3 className="font-black text-slate-900">后台访问暂未就绪</h3>
             </div>
-            <p className="text-sm text-slate-500 leading-relaxed">{error}</p>
-            <p className="text-xs font-bold tracking-[0.14em] uppercase text-slate-400">
-              Add the current email to `ADMIN_EMAILS` in backend `.env` to enable this panel.
-            </p>
+            <p className="text-sm leading-relaxed text-slate-500">{error}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => void loadOverview()}
+                className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+              >
+                重试加载
+              </button>
+              <button
+                onClick={onBack}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:border-slate-300"
+              >
+                返回设置
+              </button>
+            </div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">请确认当前账号已获得后台权限，并稍后再次尝试。</p>
           </div>
         )}
 
@@ -117,97 +169,103 @@ export default function AdminDashboard({ onBack, currentUserEmail }: AdminDashbo
           <>
             <section className="grid grid-cols-2 gap-4">
               {stats.map((stat) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 space-y-3"
-                >
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="frost-card space-y-3 rounded-[1.9rem] p-5">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                     <span className="material-symbols-outlined">{stat.icon}</span>
                   </div>
                   <div>
                     <p className="text-2xl font-black text-slate-900">{stat.value}</p>
-                    <p className="text-[11px] font-black tracking-[0.16em] uppercase text-slate-400">{stat.label}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{stat.label}</p>
                   </div>
                 </motion.div>
               ))}
             </section>
 
-            <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 space-y-5">
+            <section className="frost-card space-y-5 rounded-[2rem] p-6">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500">
                   <span className="material-symbols-outlined">hub</span>
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900">Integration health</h3>
-                  <p className="text-xs text-slate-400 font-bold tracking-[0.14em] uppercase">API and infrastructure</p>
+                  <h3 className="font-black text-slate-900">基础设施状态</h3>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">API 与基础配置</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 rounded-[1.8rem] p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Environment</p>
-                  <p className="text-sm font-black text-slate-900 mt-2">{overview.health.environment}</p>
+                <div className="soft-panel rounded-[1.6rem] p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">环境</p>
+                  <p className="mt-2 text-sm font-black text-slate-900">{overview.health.environment}</p>
                 </div>
-                <div className="bg-slate-50 rounded-[1.8rem] p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">API base</p>
-                  <p className="text-sm font-black text-slate-900 mt-2 break-all">{overview.health.apiBaseUrl}</p>
+                <div className="soft-panel rounded-[1.6rem] p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">管理员</p>
+                  <p className="mt-2 text-sm font-black text-slate-900">{overview.health.adminEmailCount} 个已授权账号</p>
                 </div>
-                <div className="bg-slate-50 rounded-[1.8rem] p-4">
+                <div className="soft-panel col-span-2 rounded-[1.6rem] p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">API Base</p>
+                  <p className="mt-2 break-all text-sm font-black text-slate-900">{overview.health.apiBaseUrl}</p>
+                </div>
+                <div className="soft-panel rounded-[1.6rem] p-4">
                   <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Supabase</p>
-                  <p className={`text-sm font-black mt-2 ${overview.health.supabaseConfigured ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {overview.health.supabaseConfigured ? 'Configured' : 'Missing config'}
+                  <p className={`mt-2 text-sm font-black ${overview.health.supabaseConfigured ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {overview.health.supabaseConfigured ? '连接正常' : '连接异常'}
                   </p>
                 </div>
-                <div className="bg-slate-50 rounded-[1.8rem] p-4">
+                <div className="soft-panel rounded-[1.6rem] p-4">
                   <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Google AI</p>
-                  <p className={`text-sm font-black mt-2 ${overview.health.googleAiConfigured ? 'text-emerald-600' : 'text-amber-500'}`}>
-                    {overview.health.googleAiConfigured ? 'Configured' : 'Fallback mode'}
+                  <p className={`mt-2 text-sm font-black ${overview.health.googleAiConfigured ? 'text-emerald-600' : 'text-amber-500'}`}>
+                    {overview.health.googleAiConfigured ? '已启用' : '降级模式'}
                   </p>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 space-y-4">
+            <section className="frost-card space-y-4 rounded-[2rem] p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900">Recent users</h3>
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{overview.recentUsers.length} records</p>
+                <h3 className="font-black text-slate-900">最近注册用户</h3>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{overview.recentUsers.length} 条</p>
               </div>
               <div className="space-y-3">
-                {overview.recentUsers.map((user) => (
-                  <div key={user.id} className="bg-slate-50 rounded-[1.8rem] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-black text-slate-900">{user.username}</p>
-                        <p className="text-xs text-slate-500 mt-1 break-all">{user.email}</p>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.14em] ${user.is_verified ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {user.is_verified ? 'Verified' : 'Pending'}
+                {overview.recentUsers.length > 0 ? (
+                  overview.recentUsers.map((user) => (
+                    <div key={user.id} className="soft-panel rounded-[1.7rem] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-black text-slate-900">{user.username}</p>
+                          <p className="mt-1 break-all text-xs text-slate-500">{user.email}</p>
+                        </div>
+                        <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${user.is_verified ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                          {user.is_verified ? '已审核' : '待审核'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyCard title="暂无注册动态" description="最近还没有新的注册用户。" />
+                )}
               </div>
             </section>
 
-            <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-6 space-y-4">
+            <section className="frost-card space-y-4 rounded-[2rem] p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-black text-slate-900">Recent messages</h3>
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{overview.recentMessages.length} records</p>
+                <h3 className="font-black text-slate-900">最近消息</h3>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">{overview.recentMessages.length} 条</p>
               </div>
               <div className="space-y-3">
-                {overview.recentMessages.map((message) => (
-                  <div key={message.id} className="bg-slate-50 rounded-[1.8rem] p-4 space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-black tracking-[0.14em] uppercase text-slate-400">
-                        {message.sender?.username || 'Unknown'} to {message.receiver?.username || 'Unknown'}
-                      </p>
-                      <span className="text-[11px] text-slate-400 font-medium">{message.created_at?.slice(0, 10) || '--'}</span>
+                {overview.recentMessages.length > 0 ? (
+                  overview.recentMessages.map((message) => (
+                    <div key={message.id} className="soft-panel space-y-2 rounded-[1.7rem] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+                          {message.sender?.username || '未知'} → {message.receiver?.username || '未知'}
+                        </p>
+                        <span className="text-[11px] font-medium text-slate-400">{message.created_at?.slice(0, 10) || '--'}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed text-slate-700">{message.content || '空消息'}</p>
                     </div>
-                    <p className="text-sm font-medium text-slate-700 leading-relaxed">{message.content}</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyCard title="暂无消息动态" description="最近还没有新的消息记录。" />
+                )}
               </div>
             </section>
           </>

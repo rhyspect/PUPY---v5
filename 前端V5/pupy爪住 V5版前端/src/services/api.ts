@@ -1,7 +1,10 @@
 ﻿import type { Owner, Pet } from '../types';
 import { getStoredLocale } from '../utils/locale';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:3001';
+const DEFAULT_API_BASE_URL =
+  typeof window !== 'undefined' && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? ''
+    : 'http://localhost:3001';
 
 const normalizeBaseUrl = (value?: string) =>
   (value || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
@@ -630,7 +633,7 @@ class ApiService {
       message: string;
       timestamp: string;
       environment: string;
-    }>('/health');
+    }>('/api/health');
   }
 
   async getApiVersion() {

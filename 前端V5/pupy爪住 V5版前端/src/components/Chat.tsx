@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { ApiPrayerRecord, ApiUser } from '../services/api';
 import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
+import { getStoredLocale, type AppLocale } from '../utils/locale';
 
 interface ChatProps {
   owner: Owner | null;
@@ -22,11 +23,82 @@ interface ChatMessageRecord {
   created_at?: string;
 }
 
-function formatTimestamp(value?: string) {
-  if (!value) return '刚刚';
+const copyByLocale = {
+  'zh-CN': {
+    justNow: '刚刚',
+    loadFailed: '会话加载失败，请稍后重试。',
+    sendFailed: '发送失败，请稍后重试。',
+    roomUnavailable: '当前还没有可用的真实聊天房间。',
+    back: '返回消息页',
+    profileFallback: '聊天对象资料',
+    waitingRoom: '等待会话接入',
+    roomTag: 'PUPY 会话',
+    tabsLabel: '聊天模式切换',
+    ownerTab: '主人对话',
+    petTab: '宠物心声',
+    loading: '正在同步真实会话数据…',
+    roomConnected: '已连接真实聊天房间',
+    emptyOwner: '你们已经互相喜欢，发第一句招呼吧。',
+    roomHint: '当前对象还没有可用的真实会话，从消息页进入已建立房间会更完整。',
+    emptyPet: '宠物心声会显示真实祈愿记录和 AI 回应，先发一条看看。',
+    aiFallback: 'AI 正在整理更自然的宠语回应。',
+    ownerPlaceholder: '输入消息…',
+    petPlaceholderPrefix: '给',
+    petPlaceholderSuffix: '留一句悄悄话…',
+    ownerInputAria: '输入聊天消息',
+    petInputAria: '输入给宠物的悄悄话',
+    send: '发送消息',
+    openProfile: '查看资料',
+    closeProfile: '关闭资料卡',
+    photosCountSuffix: '张资料图',
+    basicInfo: '基本信息',
+    residentCity: '常驻城市',
+    frequentCities: '常去城市',
+    hobbies: '兴趣爱好',
+    notFilled: '暂未填写',
+    continueChat: '继续当前对话',
+  },
+  'en-US': {
+    justNow: 'Just now',
+    loadFailed: 'Failed to load the conversation. Please try again later.',
+    sendFailed: 'Failed to send. Please try again later.',
+    roomUnavailable: 'There is no available real chat room yet.',
+    back: 'Back to messages',
+    profileFallback: 'Chat profile',
+    waitingRoom: 'Waiting for room access',
+    roomTag: 'PUPY Room',
+    tabsLabel: 'Switch chat mode',
+    ownerTab: 'Owner Chat',
+    petTab: 'Pet Voice',
+    loading: 'Syncing real conversation data…',
+    roomConnected: 'Connected to a real chat room',
+    emptyOwner: 'You already like each other. Send the first hello.',
+    roomHint: 'This person does not have an available room yet. Entering from the messages page is more reliable.',
+    emptyPet: 'Pet voice will show real prayer records and AI replies. Send one to start.',
+    aiFallback: 'AI is preparing a more natural pet response.',
+    ownerPlaceholder: 'Type a message…',
+    petPlaceholderPrefix: 'Leave',
+    petPlaceholderSuffix: 'a whisper…',
+    ownerInputAria: 'Type a chat message',
+    petInputAria: 'Type a whisper for your pet',
+    send: 'Send message',
+    openProfile: 'Open profile',
+    closeProfile: 'Close profile sheet',
+    photosCountSuffix: 'photos',
+    basicInfo: 'Basic info',
+    residentCity: 'Resident city',
+    frequentCities: 'Frequent cities',
+    hobbies: 'Hobbies',
+    notFilled: 'Not filled in yet',
+    continueChat: 'Continue chatting',
+  },
+} satisfies Record<AppLocale, Record<string, string>>;
+
+function formatTimestamp(value: string | undefined, locale: AppLocale, fallback: string) {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '刚刚';
-  return new Intl.DateTimeFormat('zh-CN', {
+  if (Number.isNaN(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(locale, {
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',
@@ -35,6 +107,8 @@ function formatTimestamp(value?: string) {
 }
 
 export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }: ChatProps) {
+  const locale = getStoredLocale();
+  const copy = useMemo(() => copyByLocale[locale], [locale]);
   const [chatMode, setChatMode] = useState<'owner' | 'pet'>('owner');
   const [message, setMessage] = useState('');
   const [showOwnerProfile, setShowOwnerProfile] = useState(false);
@@ -43,6 +117,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
   const [prayers, setPrayers] = useState<ApiPrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveRoomId(chatRoomId || null);
@@ -51,6 +126,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setError(null);
       try {
         let nextRoomId = chatRoomId || null;
         if (!nextRoomId && owner?.id && currentUser?.id) {
@@ -66,13 +142,15 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
 
         setMessages((messagesResult.data || []) as ChatMessageRecord[]);
         setPrayers((prayersResult.data || []) as ApiPrayerRecord[]);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : copy.loadFailed);
       } finally {
         setLoading(false);
       }
     };
 
     void loadData();
-  }, [chatRoomId, owner?.id, currentUser?.id]);
+  }, [chatRoomId, copy.loadFailed, currentUser?.id, owner?.id]);
 
   const gallery = useMemo(() => {
     if (owner?.photos?.length) {
@@ -86,6 +164,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
     if (!value || sending) return;
 
     setSending(true);
+    setError(null);
     try {
       if (chatMode === 'pet') {
         const result = await apiService.createPrayer(userPet.id, value);
@@ -93,136 +172,153 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
           setPrayers((prev) => [result.data as ApiPrayerRecord, ...prev]);
         }
       } else {
-        if (!activeRoomId || !owner?.id) return;
+        if (!activeRoomId || !owner?.id) {
+          setError(copy.roomUnavailable);
+          return;
+        }
+
         const result = await apiService.sendMessage(activeRoomId, owner.id, value);
         if (result.data) {
           setMessages((prev) => [...prev, result.data as ChatMessageRecord]);
         }
       }
       setMessage('');
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : copy.sendFailed);
     } finally {
       setSending(false);
     }
   };
 
   const ownerMessagesReady = Boolean(activeRoomId && owner?.id);
+  const companionAvatar = owner?.avatar || userPet.owner.avatar;
+  const companionName = owner?.name || copy.waitingRoom;
+  const companionCity = owner?.residentCity || copy.roomTag;
+  const petPlaceholder =
+    locale === 'zh-CN'
+      ? `${copy.petPlaceholderPrefix}${userPet.name}${copy.petPlaceholderSuffix}`
+      : `${copy.petPlaceholderPrefix} ${copy.petPlaceholderSuffix} ${userPet.name}`;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-surface flex flex-col max-w-md mx-auto">
-      <header className="p-6 flex flex-col gap-4 bg-white shadow-sm border-b border-slate-100">
+    <div className="fixed inset-0 z-[100] mx-auto flex max-w-md flex-col bg-surface">
+      <header className="glass border-b border-white/50 p-6">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 text-slate-400 hover:text-primary transition-colors">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/75 text-slate-400 transition hover:text-primary"
+            aria-label={copy.back}
+          >
             <span className="material-symbols-outlined">arrow_back_ios</span>
           </button>
-          <button onClick={() => setShowOwnerProfile(true)} className="flex items-center gap-3 min-w-0 text-left">
-            <div className="relative">
-              <img
-                src={owner?.avatar || userPet.owner.avatar}
-                className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shadow-sm"
-                alt={owner?.name || '聊天对象'}
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
+          <button
+            type="button"
+            onClick={() => owner && setShowOwnerProfile(true)}
+            disabled={!owner}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-75"
+            aria-label={owner ? `${copy.openProfile}: ${owner.name}` : copy.profileFallback}
+          >
+            <div className="relative shrink-0">
+              <img src={companionAvatar} className="h-12 w-12 rounded-full border-2 border-primary/20 object-cover shadow-sm" alt={companionName} referrerPolicy="no-referrer" />
+              <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-headline font-bold text-slate-900 truncate">{owner?.name || '等待会话接入'}</h3>
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                {owner?.residentCity || 'PUPY 会话'}
-              </p>
+              <h3 className="truncate font-headline text-base font-bold text-slate-900">{companionName}</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{companionCity}</p>
             </div>
           </button>
         </div>
 
-        <div className="flex bg-slate-100 p-1 rounded-2xl">
+        <div className="mt-4 flex rounded-2xl border border-white/50 bg-white/55 p-1" role="tablist" aria-label={copy.tabsLabel}>
           <button
+            type="button"
+            role="tab"
+            aria-selected={chatMode === 'owner'}
+            aria-controls="chat-owner-panel"
+            id="chat-owner-tab"
             onClick={() => setChatMode('owner')}
-            className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${
-              chatMode === 'owner' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'
-            }`}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[10px] font-black transition-all ${chatMode === 'owner' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'}`}
           >
             <span className="material-symbols-outlined text-sm">person</span>
-            主人对话
+            {copy.ownerTab}
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={chatMode === 'pet'}
+            aria-controls="chat-pet-panel"
+            id="chat-pet-tab"
             onClick={() => setChatMode('pet')}
-            className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${
-              chatMode === 'pet' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'
-            }`}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[10px] font-black transition-all ${chatMode === 'pet' ? 'bg-white text-primary shadow-sm' : 'text-slate-400'}`}
           >
             <span className="material-symbols-outlined text-sm">pets</span>
-            宠物心声
+            {copy.petTab}
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+      <div className="flex-1 space-y-4 overflow-y-auto p-6 no-scrollbar">
+        {error && (
+          <div className="rounded-[1.6rem] border border-amber-100 bg-amber-50/90 px-4 py-3 text-sm font-semibold text-amber-700" role="alert">
+            {error}
+          </div>
+        )}
+
         {loading ? (
-          <div className="h-full flex items-center justify-center text-sm text-slate-400">正在同步真实会话数据…</div>
+          <div className="flex h-full items-center justify-center text-sm text-slate-400" role="status">{copy.loading}</div>
         ) : chatMode === 'owner' ? (
-          ownerMessagesReady ? (
-            <>
-              <div className="text-center">
-                <span className="px-4 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-full uppercase tracking-widest">
-                  已连接真实聊天房间
-                </span>
-              </div>
-              {messages.length === 0 ? (
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 text-sm text-slate-400 text-center">
-                  你们已经互相喜欢，发第一句招呼吧。
+          <div id="chat-owner-panel" role="tabpanel" aria-labelledby="chat-owner-tab" className="space-y-4">
+            {ownerMessagesReady ? (
+              <>
+                <div className="text-center">
+                  <span className="rounded-full bg-slate-100 px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{copy.roomConnected}</span>
                 </div>
-              ) : (
-                messages.map((msg) => {
-                  const sent = msg.sender_id === currentUser?.id;
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      className={`flex ${sent ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[80%] p-4 rounded-3xl shadow-sm ${sent ? 'bg-primary text-white rounded-tr-none' : 'bg-white text-slate-900 rounded-tl-none border border-slate-100'}`}>
-                        <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
-                        <p className={`mt-2 text-[10px] font-bold ${sent ? 'text-white/70' : 'text-slate-400'}`}>
-                          {formatTimestamp(msg.created_at)}
-                        </p>
-                      </div>
-                    </motion.div>
-                  );
-                })
-              )}
-            </>
-          ) : (
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 text-sm text-slate-400 text-center">
-              当前对象还没有可用的真实会话，返回消息页从已建立房间进入会更完整。
-            </div>
-          )
-        ) : prayers.length === 0 ? (
-          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 text-sm text-slate-400 text-center">
-            宠物心声会显示真实祈愿记录和 AI 回应，先发一条看看。
+                {messages.length === 0 ? (
+                  <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyOwner}</div>
+                ) : (
+                  messages.map((msg) => {
+                    const sent = msg.sender_id === currentUser?.id;
+                    return (
+                      <motion.div key={msg.id} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`flex ${sent ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] rounded-3xl p-4 shadow-sm ${sent ? 'rounded-tr-none bg-primary text-white' : 'rounded-tl-none border border-white/50 glass text-slate-900'}`}>
+                          <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
+                          <p className={`mt-2 text-[10px] font-bold ${sent ? 'text-white/70' : 'text-slate-400'}`}>
+                            {formatTimestamp(msg.created_at, locale, copy.justNow)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </>
+            ) : (
+              <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.roomHint}</div>
+            )}
           </div>
         ) : (
-          prayers.map((record) => (
-            <motion.div
-              key={record.id}
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="space-y-3 bg-white rounded-[2rem] border border-slate-100 p-5"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{formatTimestamp(record.created_at)}</p>
-                <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black">{record.sentiment || 'positive'}</span>
-              </div>
-              <p className="text-sm text-slate-500 italic">“{record.prayer_text}”</p>
-              <div className="rounded-[1.6rem] bg-primary/5 border border-primary/10 p-4">
-                <p className="text-sm text-slate-700 font-medium leading-relaxed">{record.ai_response || 'AI 正在整理更自然的宠语回应。'}</p>
-              </div>
-            </motion.div>
-          ))
+          <div id="chat-pet-panel" role="tabpanel" aria-labelledby="chat-pet-tab" className="space-y-4">
+            {prayers.length === 0 ? (
+              <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyPet}</div>
+            ) : (
+              prayers.map((record) => (
+                <motion.div key={record.id} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="glass space-y-3 rounded-[2rem] border border-white/50 p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{formatTimestamp(record.created_at, locale, copy.justNow)}</p>
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">{record.sentiment || 'positive'}</span>
+                  </div>
+                  <p className="text-sm italic text-slate-500">“{record.prayer_text}”</p>
+                  <div className="rounded-[1.6rem] border border-primary/10 bg-primary/5 p-4">
+                    <p className="text-sm font-medium leading-relaxed text-slate-700">{record.ai_response || copy.aiFallback}</p>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
         )}
       </div>
 
-      <footer className="p-6 bg-white border-t border-slate-100">
-        <div className="flex items-center gap-3 bg-slate-50 rounded-full px-5 py-2 shadow-inner border border-slate-100">
+      <footer className="glass border-t border-white/50 p-6">
+        <div className="flex items-center gap-3 rounded-full border border-white/60 bg-white/75 px-5 py-2 shadow-inner">
           <input
             type="text"
             value={message}
@@ -232,18 +328,17 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
                 void handleSend();
               }
             }}
-            placeholder={chatMode === 'owner' ? '输入消息…' : `给 ${userPet.name} 留一句悄悄话…`}
-            className="flex-1 bg-transparent border-none py-3 text-sm font-medium focus:ring-0 placeholder:text-slate-300"
+            placeholder={chatMode === 'owner' ? copy.ownerPlaceholder : petPlaceholder}
+            className="flex-1 border-none bg-transparent py-3 text-sm font-medium text-slate-700 outline-none placeholder:text-slate-300"
             disabled={chatMode === 'owner' && !ownerMessagesReady}
+            aria-label={chatMode === 'owner' ? copy.ownerInputAria : copy.petInputAria}
           />
           <button
+            type="button"
             onClick={() => void handleSend()}
             disabled={!message.trim() || sending || (chatMode === 'owner' && !ownerMessagesReady)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-              message.trim() && !(chatMode === 'owner' && !ownerMessagesReady)
-                ? 'bg-primary text-white scale-110 shadow-lg'
-                : 'text-slate-300'
-            }`}
+            className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${message.trim() && !(chatMode === 'owner' && !ownerMessagesReady) ? 'scale-105 bg-primary text-white shadow-lg' : 'text-slate-300'}`}
+            aria-label={copy.send}
           >
             <span className="material-symbols-outlined">send</span>
           </button>
@@ -253,88 +348,72 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
       <AnimatePresence>
         {showOwnerProfile && owner && (
           <div className="fixed inset-0 z-[200] flex items-end justify-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowOwnerProfile(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-white rounded-t-[3rem] overflow-hidden shadow-2xl"
-              style={{ maxHeight: '90vh' }}
-            >
-              <div className="overflow-y-auto h-full no-scrollbar pb-10">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowOwnerProfile(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full max-w-md overflow-hidden rounded-t-[3rem] bg-white shadow-2xl" style={{ maxHeight: '90vh' }}>
+              <div className="h-full overflow-y-auto pb-10 no-scrollbar">
                 <div className="relative h-[45vh] bg-slate-100">
-                  <div className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">
+                  <div className="flex h-full snap-x snap-mandatory overflow-x-auto no-scrollbar">
                     {gallery.map((photo, index) => (
-                      <img key={index} src={photo} className="w-full h-full object-cover snap-center flex-shrink-0" alt="资料图" referrerPolicy="no-referrer" />
+                      <img key={index} src={photo} className="h-full w-full shrink-0 snap-center object-cover" alt={`${owner.name} ${copy.openProfile} ${index + 1}`} referrerPolicy="no-referrer" />
                     ))}
                   </div>
-                  <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
-                    <button onClick={() => setShowOwnerProfile(false)} className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md text-white flex items-center justify-center">
+                  <div className="absolute left-6 right-6 top-6 flex items-center justify-between">
+                    <button type="button" onClick={() => setShowOwnerProfile(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20 text-white backdrop-blur-md" aria-label={copy.closeProfile}>
                       <span className="material-symbols-outlined">close</span>
                     </button>
-                    <div className="px-3 py-1 bg-black/20 backdrop-blur-md rounded-full text-[10px] font-black text-white uppercase tracking-widest">
-                      {gallery.length} 张资料图
+                    <div className="rounded-full bg-black/20 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-md">
+                      {gallery.length} {copy.photosCountSuffix}
                     </div>
                   </div>
                 </div>
 
-                <div className="p-8 space-y-8">
+                <div className="space-y-8 p-8">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-3xl font-black text-slate-900 italic tracking-tight">{owner.name}</h2>
-                      <span className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-md font-black">{owner.mbti}</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h2 className="text-3xl font-black italic tracking-tight text-slate-900">{owner.name}</h2>
+                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">{owner.mbti}</span>
                     </div>
-                    <p className="text-slate-400 font-medium text-sm">{owner.signature}</p>
+                    <p className="text-sm font-medium text-slate-400">{owner.signature}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">基本信息</p>
-                      <p className="font-bold text-slate-900">{owner.gender} · {owner.age} 岁</p>
+                    <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.basicInfo}</p>
+                      <p className="font-bold text-slate-900">{owner.gender} · {owner.age}</p>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-3xl space-y-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">常驻城市</p>
+                    <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.residentCity}</p>
                       <p className="font-bold text-slate-900">{owner.residentCity}</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">常去城市</h4>
+                    <h4 className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.frequentCities}</h4>
                     <div className="flex flex-wrap gap-2">
-                      {owner.frequentCities.map((city) => (
-                        <span key={city} className="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-black rounded-2xl tracking-wide border border-slate-100">
-                          {city}
-                        </span>
-                      ))}
+                      {owner.frequentCities.length ? owner.frequentCities.map((city) => (
+                        <span key={city} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-xs font-black tracking-wide text-slate-600">{city}</span>
+                      )) : <span className="text-sm text-slate-400">{copy.notFilled}</span>}
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">兴趣爱好</h4>
+                    <h4 className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.hobbies}</h4>
                     <div className="flex flex-wrap gap-2">
-                      {owner.hobbies.map((hobby) => (
-                        <span key={hobby} className="px-4 py-2 bg-emerald-50 text-emerald-600 text-xs font-black rounded-2xl tracking-wide border border-emerald-100">
-                          {hobby}
-                        </span>
-                      ))}
+                      {owner.hobbies.length ? owner.hobbies.map((hobby) => (
+                        <span key={hobby} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs font-black tracking-wide text-emerald-600">{hobby}</span>
+                      )) : <span className="text-sm text-slate-400">{copy.notFilled}</span>}
                     </div>
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setChatMode('owner');
                       setShowOwnerProfile(false);
                     }}
-                    className="w-full py-5 bg-primary text-white font-black rounded-3xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
+                    className="w-full rounded-3xl bg-primary py-5 font-black text-white shadow-xl shadow-primary/20 transition-all active:scale-95"
                   >
-                    继续当前对话
+                    {copy.continueChat}
                   </button>
                 </div>
               </div>

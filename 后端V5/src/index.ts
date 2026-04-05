@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from 'express';
+﻿import express, { type Express, type Request, type Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 });
 app.use('/assets', express.static(path.resolve(__dirname, '../public/assets')));
 
-app.get('/health', (req: Request, res: Response) => {
+const sendHealth = (req: Request, res: Response) => {
   const locale = resolveRequestLocale(req);
 
   res.json({
@@ -40,7 +40,10 @@ app.get('/health', (req: Request, res: Response) => {
     environment: config.nodeEnv,
     language: locale,
   });
-});
+};
+
+app.get('/health', sendHealth);
+app.get('/api/health', sendHealth);
 
 app.get('/api/version', (req: Request, res: Response) => {
   const locale = resolveRequestLocale(req);
@@ -49,7 +52,7 @@ app.get('/api/version', (req: Request, res: Response) => {
     success: true,
     version: '1.2.0',
     name: pickLocaleText(locale, 'PUPY 后端接口', 'PUPY Backend API'),
-    description: pickLocaleText(locale, '宠物社交与数据管理平台后端', 'Backend for the pet social and data management platform'),
+    description: pickLocaleText(locale, '宠物社交与数据管理平台后端。', 'Backend for the pet social and data management platform.'),
     language: locale,
   });
 });
@@ -82,10 +85,10 @@ const PORT = config.port;
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`PUPY backend started on http://localhost:${PORT}`);
-    console.log(`Admin panel: http://localhost:${PORT}/api/admin/panel`);
-    console.log(`Environment: ${config.nodeEnv}`);
-    console.log(`Admin emails configured: ${config.admin.allowedEmails.length}`);
+    console.log(`PUPY 后端已启动：http://localhost:${PORT}`);
+    console.log(`后台面板入口：http://localhost:${PORT}/api/admin/panel`);
+    console.log(`运行环境：${config.nodeEnv}`);
+    console.log(`管理员邮箱数量：${config.admin.allowedEmails.length}`);
   });
 }
 

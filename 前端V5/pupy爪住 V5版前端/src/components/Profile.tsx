@@ -268,20 +268,30 @@ export default function Profile({
   };
 
   if (loading) {
-    return <div className="px-6 py-12 text-center text-sm text-slate-400">正在同步真实档案数据…</div>;
+    return <div className="px-6 py-12"><div className="glass ambient-card rounded-[2.6rem] border border-white/50 p-8 text-center text-sm text-slate-400 shadow-sm">正在同步真实档案数据…</div></div>;
   }
 
   return (
     <div className="px-6 space-y-8 pb-10">
-      <section className="text-center space-y-2">
-        <h1 className="font-headline text-4xl font-extrabold tracking-tight text-primary italic">个人空间</h1>
-        <p className="text-slate-500 font-medium tracking-tight">欢迎回来，{owner.name}</p>
+      <section className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 px-6 py-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/70">{'\u4e2a\u4eba\u7a7a\u95f4'}</p>
+            <h1 className="font-headline text-4xl font-black italic tracking-tight text-slate-900">个人空间与数字分身</h1>
+            <p className="max-w-sm text-sm leading-relaxed text-slate-500">这里统一承接真实档案、宠物分身、通知、匹配进度和你的市场资产，确保主人视角和后台数据完全一致。</p>
+          </div>
+          <div className="soft-panel rounded-[2rem] border border-white/50 px-4 py-4 text-right">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">欢迎回来</p>
+            <p className="mt-2 text-sm font-black text-slate-900">{owner.name}</p>
+            <p className="mt-1 text-xs text-slate-400">{profilePet.name} · {profilePet.type}</p>
+          </div>
+        </div>
       </section>
 
       <div className="flex justify-center">
-        <div className="bg-slate-100 p-1 rounded-[2rem] flex relative w-full h-14 max-w-sm">
+        <div className="glass ambient-card relative flex h-14 w-full max-w-sm rounded-[2rem] border border-white/50 p-1 shadow-sm">
           <motion.div
-            className="absolute top-1 bottom-1 bg-white rounded-[1.8rem] shadow-md z-0"
+            className="absolute bottom-1 top-1 z-0 rounded-[1.8rem] bg-white shadow-md"
             initial={false}
             animate={{
               left: activeTab === 'reality' ? '4px' : activeTab === 'virtual' ? '33.33%' : '66.66%',
@@ -297,7 +307,7 @@ export default function Profile({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as ActiveTab)}
-              className={`flex-1 relative z-10 flex items-center justify-center gap-1 text-[10px] font-black transition-colors ${
+              className={`relative z-10 flex flex-1 items-center justify-center gap-1 text-[10px] font-black transition-colors ${
                 activeTab === tab.key ? 'text-primary' : 'text-slate-400'
               }`}
             >
@@ -317,10 +327,10 @@ export default function Profile({
             exit={{ opacity: 0, y: -16 }}
             className="space-y-8"
           >
-            <div className="bg-white rounded-[3rem] overflow-hidden shadow-sm border border-slate-100 p-8 space-y-6 relative">
+            <div className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 shadow-sm p-8 space-y-6 relative">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="absolute top-6 right-6 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors"
+                className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-400 shadow-sm transition-colors hover:text-primary"
               >
                 <span className="material-symbols-outlined text-xl">edit</span>
               </button>
@@ -378,8 +388,8 @@ export default function Profile({
                 { label: '档案互动', value: diaryInteractionCount, icon: 'chat_bubble', tone: 'text-blue-500' },
                 { label: '我的发布', value: sellerProducts.length, icon: 'storefront', tone: 'text-emerald-500' },
               ].map((item) => (
-                <div key={item.label} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center ${item.tone}`}>
+                <div key={item.label} className="glass ambient-card flex items-center gap-4 rounded-[2.5rem] border border-white/50 p-6 shadow-sm">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white/75 ${item.tone}`}>
                     <span className="material-symbols-outlined">{item.icon}</span>
                   </div>
                   <div>
@@ -390,7 +400,7 @@ export default function Profile({
               ))}
             </div>
 
-            <div className="bg-white rounded-[3rem] overflow-hidden shadow-sm border border-slate-100 p-8 space-y-6">
+            <div className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 shadow-sm p-8 space-y-6">
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-[2.5rem] overflow-hidden shadow-xl ring-4 ring-primary/5">
                   <img
@@ -413,7 +423,7 @@ export default function Profile({
                       疫苗 {petRecord?.vaccinated ? '已完成' : '待补充'}
                     </span>
                     <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] rounded-full font-black">
-                      健康 {petRecord?.health_status || 'healthy'}
+                      健康 {petRecord?.health_status || '\u7a33\u5b9a'}
                     </span>
                     <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] rounded-full font-black">
                       数字分身 {twinReady ? '已生成' : '未生成'}
@@ -422,16 +432,16 @@ export default function Profile({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-[2rem] p-5">
+                <div className="soft-panel rounded-[2rem] border border-white/50 p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">体重</p>
                   <p className="mt-2 text-lg font-black text-slate-900">{petRecord?.weight ? `${petRecord.weight} kg` : '未填写'}</p>
                 </div>
-                <div className="bg-slate-50 rounded-[2rem] p-5">
+                <div className="soft-panel rounded-[2rem] border border-white/50 p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">谱系</p>
                   <p className="mt-2 text-lg font-black text-slate-900 line-clamp-2">{petRecord?.pedigree_info || '暂无'}</p>
                 </div>
               </div>
-              <div className="bg-slate-50 rounded-[2.5rem] p-6 space-y-3">
+              <div className="soft-panel rounded-[2.5rem] border border-white/50 p-6 space-y-3">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">宠物备注</h4>
                 <p className="text-sm text-slate-600 leading-relaxed">{petRecord?.bio || '这只毛孩子还没有补充更完整的档案介绍。'}</p>
               </div>
@@ -443,13 +453,13 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">最近 8 条</span>
               </div>
               {diaries.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-sm text-slate-400 text-center">
+                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
                   还没有新的日记内容，后续发布后会同步显示在这里。
                 </div>
               ) : (
                 <div className="space-y-4">
                   {diaries.map((diary) => (
-                    <div key={diary.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <div key={diary.id} className="glass ambient-card rounded-[2.5rem] border border-white/50 shadow-sm overflow-hidden">
                       {diary.images?.[0] && (
                         <img
                           src={diary.images[0]}
@@ -494,11 +504,11 @@ export default function Profile({
             exit={{ opacity: 0, y: -16 }}
             className="space-y-8"
           >
-            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm p-8 space-y-6 overflow-hidden relative">
+            <div className="glass ambient-card rounded-[3rem] border border-white/50 shadow-sm p-8 space-y-6 overflow-hidden relative">
               <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-primary/15 via-emerald-100/50 to-sky-100/50" />
               <div className="relative flex items-start justify-between gap-4">
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Digital Twin</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">{'\u6570\u5b57\u5206\u8eab'}</p>
                   <h2 className="font-headline text-3xl font-black italic tracking-tight text-slate-900">
                     {twinReady ? `${profilePet.name} 已在线` : '创建宠物数字分身'}
                   </h2>
@@ -513,11 +523,11 @@ export default function Profile({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 relative">
-                <div className="bg-slate-50 rounded-[2rem] p-5">
+                <div className="soft-panel rounded-[2rem] border border-white/50 p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">状态</p>
                   <p className="mt-2 text-lg font-black text-slate-900">{twinReady ? '已激活' : '未生成'}</p>
                 </div>
-                <div className="bg-slate-50 rounded-[2rem] p-5">
+                <div className="soft-panel rounded-[2rem] border border-white/50 p-5">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">最后同步</p>
                   <p className="mt-2 text-lg font-black text-slate-900">
                     {formatTimestamp(petRecord?.digital_twin_data?.generated_at || petRecord?.updated_at)}
@@ -533,7 +543,7 @@ export default function Profile({
               </button>
             </div>
 
-            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm p-8 space-y-5">
+            <div className="glass ambient-card rounded-[3rem] border border-white/50 shadow-sm p-8 space-y-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-black text-slate-900">AI 祈愿与宠语记录</h3>
@@ -543,7 +553,7 @@ export default function Profile({
                   {prayers.length} 条记录
                 </span>
               </div>
-              <div className="flex items-center gap-3 bg-slate-50 rounded-[2rem] px-4 py-3">
+              <div className="flex items-center gap-3 soft-panel rounded-[2rem] border border-white/50 px-4 py-3">
                 <input
                   type="text"
                   value={prayerInput}
@@ -565,21 +575,21 @@ export default function Profile({
                 </button>
               </div>
               {prayers.length === 0 ? (
-                <div className="bg-slate-50 rounded-[2rem] p-6 text-sm text-slate-400 text-center">
+                <div className="soft-panel rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">
                   还没有祈愿记录，发一条试试看。
                 </div>
               ) : (
                 <div className="space-y-4">
                   {prayers.map((record) => (
-                    <div key={record.id} className="bg-slate-50 rounded-[2.5rem] p-5 space-y-3 border border-slate-100">
+                    <div key={record.id} className="soft-panel rounded-[2.5rem] border border-white/50 p-5 space-y-3">
                       <div className="flex items-center justify-between gap-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{formatTimestamp(record.created_at)}</p>
                         <span className="px-2 py-1 rounded-full bg-white text-[10px] font-black text-emerald-600">
-                          {record.sentiment || 'positive'}
+                          {record.sentiment || '\u79ef\u6781'}
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 italic">“{record.prayer_text}”</p>
-                      <div className="bg-white rounded-[2rem] p-4 border border-slate-100">
+                      <div className="rounded-[2rem] border border-white/50 bg-white/75 p-4">
                         <p className="text-sm text-slate-700 leading-relaxed font-medium">
                           {record.ai_response || 'AI 正在整理更贴近宠物语境的回应。'}
                         </p>
@@ -599,15 +609,15 @@ export default function Profile({
             className="space-y-8"
           >
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-sm">
+              <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-5 shadow-sm">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">未读通知</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{unreadNotifications}</p>
               </div>
-              <div className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-sm">
+              <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-5 shadow-sm">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">发布资产</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{sellerProducts.length}</p>
               </div>
-              <div className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-sm">
+              <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-5 shadow-sm">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">祈愿档案</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">{prayers.length}</p>
               </div>
@@ -619,13 +629,13 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">真实市场数据</span>
               </div>
               {sellerProducts.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-sm text-slate-400 text-center">
+                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
                   你还没有新的市场发布。
                 </div>
               ) : (
                 <div className="space-y-3">
                   {sellerProducts.map((item) => (
-                    <div key={item.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-5 flex items-center gap-4">
+                    <div key={item.id} className="glass ambient-card rounded-[2.5rem] border border-white/50 shadow-sm p-5 flex items-center gap-4">
                       <img
                         src={item.images?.[0] || item.pet?.images?.[0] || EMPTY_IMAGE}
                         alt={item.title}
@@ -656,7 +666,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">点击后标记已读</span>
               </div>
               {notifications.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-sm text-slate-400 text-center">
+                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
                   暂时没有新的系统通知。
                 </div>
               ) : (
@@ -665,7 +675,7 @@ export default function Profile({
                     <button
                       key={item.id}
                       onClick={() => void markNotificationAsRead(item.id)}
-                      className="w-full text-left bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-5 space-y-3"
+                      className="w-full text-left glass ambient-card rounded-[2.5rem] border border-white/50 shadow-sm p-5 space-y-3"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
@@ -693,7 +703,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">最近 6 条</span>
               </div>
               {matches.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-sm text-slate-400 text-center">
+                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
                   还没有新的匹配记录。
                 </div>
               ) : (
@@ -707,7 +717,7 @@ export default function Profile({
                           ? 'bg-amber-50 text-amber-600'
                           : 'bg-slate-100 text-slate-500';
                     return (
-                      <div key={match.id} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-5 flex items-center gap-4">
+                      <div key={match.id} className="glass ambient-card rounded-[2.5rem] border border-white/50 shadow-sm p-5 flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
                           <span className="material-symbols-outlined">pets</span>
                         </div>
@@ -736,7 +746,7 @@ export default function Profile({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm"
             onClick={() => setShowEditModal(false)}
           >
             <motion.div
@@ -744,7 +754,7 @@ export default function Profile({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.92, opacity: 0 }}
               onClick={(event) => event.stopPropagation()}
-              className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              className="glass ambient-card flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[3rem] border border-white/50 shadow-2xl"
             >
               <div className="p-8 pb-4 border-b border-slate-100 flex items-center justify-between gap-4">
                 <div>
@@ -753,7 +763,7 @@ export default function Profile({
                 </div>
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-400 shadow-sm"
                 >
                   <span className="material-symbols-outlined">close</span>
                 </button>
@@ -780,7 +790,7 @@ export default function Profile({
                         onChange={(event) => updateField(item.field as keyof EditFormState, event.target.value)}
                         placeholder={item.placeholder}
                         rows={3}
-                        className="w-full rounded-[1.8rem] border-none bg-slate-50 px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 resize-none"
+                        className="w-full resize-none rounded-[1.8rem] border border-white/50 bg-white/75 px-4 py-3 text-sm text-slate-700 outline-none focus:border-primary/30"
                       />
                     ) : (
                       <input
@@ -788,7 +798,7 @@ export default function Profile({
                         value={editForm[item.field as keyof EditFormState]}
                         onChange={(event) => updateField(item.field as keyof EditFormState, event.target.value)}
                         placeholder={item.placeholder}
-                        className="w-full rounded-[1.8rem] border-none bg-slate-50 px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20"
+                        className="w-full rounded-[1.8rem] border border-white/50 bg-white/75 px-4 py-3 text-sm text-slate-700 outline-none focus:border-primary/30"
                       />
                     )}
                   </label>
@@ -817,3 +827,5 @@ export default function Profile({
     </div>
   );
 }
+
+
