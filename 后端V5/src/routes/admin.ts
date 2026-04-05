@@ -16,8 +16,10 @@ const adminHtmlCandidates = [
   path.resolve(__dirname, '../public/admin-panel.html'),
   path.resolve(process.cwd(), 'src/public/admin-panel.html'),
   path.resolve(process.cwd(), 'dist/public/admin-panel.html'),
-  path.resolve(process.cwd(), '../../后端V5/src/public/admin-panel.html'),
-  path.resolve(process.cwd(), '../../后端V5/dist/public/admin-panel.html'),
+  path.resolve(process.cwd(), 'api/_backend/public/admin-panel.html'),
+  path.resolve(process.cwd(), 'api/_backend/dist/public/admin-panel.html'),
+  path.resolve(process.cwd(), '../../\u540e\u7aefV5/src/public/admin-panel.html'),
+  path.resolve(process.cwd(), '../../\u540e\u7aefV5/dist/public/admin-panel.html'),
 ];
 
 const resolveAdminHtmlPath = () =>
@@ -129,3 +131,4 @@ router.get('/breeding', authMiddleware, async (req: AuthRequest, res: Express.Re
 });
 
 export default router;
+

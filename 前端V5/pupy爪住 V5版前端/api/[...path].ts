@@ -1,4 +1,4 @@
-﻿// @ts-ignore - generated during build by scripts/sync-backend-runtime.mjs
-import app from './_backend/dist/index.js';
+﻿// @ts-ignore - bundled backend runtime checked into api/_backend-bundle
+import app from './_backend-bundle/index.js';
 
 export default app;
