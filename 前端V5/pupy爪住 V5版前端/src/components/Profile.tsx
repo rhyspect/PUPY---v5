@@ -75,6 +75,7 @@ export default function Profile({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatingTwin, setCreatingTwin] = useState(false);
+  const [twinFeedback, setTwinFeedback] = useState<string | null>(null);
   const [sendingPrayer, setSendingPrayer] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [petRecord, setPetRecord] = useState<ApiPetRecord | null>(null);
@@ -211,6 +212,7 @@ export default function Profile({
     if (!petId || creatingTwin) return;
 
     setCreatingTwin(true);
+    setTwinFeedback(null);
     try {
       const result = await apiService.createDigitalTwin(
         petId,
@@ -230,6 +232,16 @@ export default function Profile({
       }
       onStartCreation();
       setActiveTab('virtual');
+    } catch (error) {
+      setTwinFeedback(
+        error instanceof Error
+          ? `${error.message}。已切换到本地生成体验，配置 Supabase 后会同步真实数字分身。`
+          : '数字分身接口暂不可用，已切换到本地生成体验。',
+      );
+      onProfileSync?.({ isDigitalTwinCreated: true });
+      onTwinCreated();
+      setActiveTab('virtual');
+      onStartCreation();
     } finally {
       setCreatingTwin(false);
     }
@@ -541,6 +553,11 @@ export default function Profile({
               >
                 {twinReady ? '重新同步数字分身' : creatingTwin ? '正在生成中…' : '立即生成数字分身'}
               </button>
+              {twinFeedback && (
+                <div className="rounded-[1.8rem] border border-amber-100 bg-amber-50/90 px-5 py-4 text-sm font-semibold leading-relaxed text-amber-700">
+                  {twinFeedback}
+                </div>
+              )}
             </div>
 
             <div className="glass ambient-card rounded-[3rem] border border-white/50 shadow-sm p-8 space-y-5">
@@ -827,5 +844,4 @@ export default function Profile({
     </div>
   );
 }
-
 

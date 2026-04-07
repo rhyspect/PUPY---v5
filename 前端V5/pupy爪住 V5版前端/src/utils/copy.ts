@@ -104,7 +104,7 @@ const zhCN: AppCopy = {
     home: '首页',
     tour: '云游',
     messages: '消息',
-    market: '集市',
+    market: '爪住集市',
     profile: '我的',
   },
   toast: {
@@ -182,7 +182,7 @@ const enUS: AppCopy = {
     home: 'Home',
     tour: 'Tour',
     messages: 'Messages',
-    market: 'Market',
+    market: 'PUPY Market',
     profile: 'Profile',
   },
   toast: {
@@ -238,4 +238,3 @@ const enUS: AppCopy = {
 export function getAppCopy(locale: AppLocale = getStoredLocale()): AppCopy {
   return locale === 'en-US' ? enUS : zhCN;
 }
-

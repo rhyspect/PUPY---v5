@@ -5,6 +5,7 @@ import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
+import { PETS } from '../constants';
 
 interface HomeProps {
   onMatch: (payload?: { owner?: Owner; match?: ApiMatchRecord }) => void;
@@ -84,6 +85,43 @@ function normalizeCandidate(candidate: ApiDiscoveryPet, locale: AppLocale): Disc
   };
 }
 
+function createDemoUser(owner: Owner, index: number): ApiUser {
+  return {
+    id: owner.id || `demo-owner-${index + 1}`,
+    username: owner.name,
+    email: owner.email || `demo-owner-${index + 1}@pupy.local`,
+    age: owner.age,
+    gender: owner.gender,
+    resident_city: owner.residentCity,
+    frequent_cities: owner.frequentCities,
+    hobbies: owner.hobbies,
+    mbti: owner.mbti,
+    signature: owner.signature,
+    avatar_url: owner.avatar,
+    photos: owner.photos,
+    is_verified: true,
+  };
+}
+
+function createDemoDiscoveryCard(pet: Pet, index: number): DiscoveryCard {
+  const owner = createDemoUser(pet.owner, index);
+  return {
+    ...pet,
+    ownerId: undefined,
+    raw: {
+      id: pet.id,
+      user_id: owner.id,
+      name: pet.name,
+      type: pet.type,
+      gender: pet.gender,
+      personality: pet.personality,
+      breed: pet.type,
+      images: pet.images,
+      owner,
+    },
+  };
+}
+
 function createOptimisticMatchRecord(
   createdMatch: ApiMatchRecord | undefined,
   currentUser: ApiUser | null,
@@ -131,10 +169,18 @@ export default function Home({ onMatch, onViewOwner, currentUser, userPet }: Hom
     setError(null);
     try {
       const result = await apiService.getDiscoverPets(userPet.type, userPet.gender, 24);
-      setCards((result.data || []).map((candidate) => normalizeCandidate(candidate, locale)));
+      const apiCards = (result.data || []).map((candidate) => normalizeCandidate(candidate, locale));
+      setCards(apiCards.length ? apiCards : PETS.map(createDemoDiscoveryCard));
+      if (!apiCards.length) {
+        setError('当前 Supabase 推荐池为空，已切换到本地样本卡片供测试左滑右滑。');
+      }
     } catch (requestError) {
-      setCards([]);
-      setError(requestError instanceof Error ? requestError.message : copy.discoverFailed);
+      setCards(PETS.map(createDemoDiscoveryCard));
+      setError(
+        requestError instanceof Error
+          ? `${requestError.message}。已加载本地样本卡片供测试。`
+          : `${copy.discoverFailed} 已加载本地样本卡片供测试。`,
+      );
     } finally {
       setLoading(false);
     }

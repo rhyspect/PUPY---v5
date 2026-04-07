@@ -30,7 +30,7 @@ export class AuthService {
       if (existingUser && existingUser.length > 0) {
         return {
           success: false,
-          error: '???????????',
+          error: '邮箱或用户名已存在。',
           code: 400,
         };
       }
@@ -69,18 +69,18 @@ export class AuthService {
 
       const user = await this.getUserById(userId);
       if (!user) {
-        throw new Error('??????????????');
+        throw new Error('注册成功但未能读取用户信息。');
       }
 
       return {
         success: true,
         data: { user: this.toSafeUser(user), token },
-        message: '?????',
+        message: '注册成功。',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '?????',
+        error: error.message || '注册失败，请稍后再试。',
         code: 500,
       };
     }
@@ -93,7 +93,7 @@ export class AuthService {
       if (error || !userData || userData.length === 0) {
         return {
           success: false,
-          error: '??????',
+          error: '账号不存在或邮箱未注册。',
           code: 401,
         };
       }
@@ -103,7 +103,7 @@ export class AuthService {
       if (!passwordMatch) {
         return {
           success: false,
-          error: '?????',
+          error: '密码不正确。',
           code: 401,
         };
       }
@@ -119,12 +119,12 @@ export class AuthService {
       return {
         success: true,
         data: { user: this.toSafeUser(user), token },
-        message: '?????',
+        message: '登录成功。',
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '?????',
+        error: error.message || '登录失败，请稍后再试。',
         code: 500,
       };
     }
@@ -166,7 +166,7 @@ export class AuthService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        throw error || new Error('?????');
+        throw error || new Error('未找到可更新的用户。');
       }
 
       return {
@@ -177,7 +177,7 @@ export class AuthService {
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || '?????',
+        error: error.message || '更新用户信息失败。',
         code: 500,
       };
     }

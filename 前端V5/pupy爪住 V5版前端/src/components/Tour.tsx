@@ -1,11 +1,22 @@
-﻿import { useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { PETS, REALMS } from '../constants';
+import type { Pet } from '../types';
 
-export default function Tour({ onSelectRealm }: { onSelectRealm: () => void }) {
+const CLOUD_LOADING_COPY = [
+  '正在帮[狗狗名字]穿上云端漫步靴...',
+  '[狗狗名字]正兴奋地跑向云端森林...',
+  '正在同步[狗狗名字]的社交嗅觉...',
+  '嗅到了！附近有 12 只熟悉的小伙伴...',
+];
+
+export default function Tour({ onSelectRealm, userPet }: { onSelectRealm: () => void; userPet?: Pet }) {
   const [view, setView] = useState<'map' | 'realms' | 'courtyards'>('map');
   const [showModal, setShowModal] = useState<'create' | 'join' | null>(null);
   const [modalData, setModalData] = useState({ name: '', id: '', password: '' });
+  const [cloudEntry, setCloudEntry] = useState<{ phrase: string; target: string } | null>(null);
+  const phraseTimerRef = useRef<number | null>(null);
+  const finishTimerRef = useRef<number | null>(null);
   const [courtyards, setCourtyards] = useState([
     {
       id: '1024',
@@ -51,6 +62,38 @@ export default function Tour({ onSelectRealm }: { onSelectRealm: () => void }) {
     ]);
     setShowModal(null);
     setModalData({ name: '', id: '', password: '' });
+  };
+
+  const petName = userPet?.name || '小狗狗';
+
+  const clearCloudTimers = () => {
+    if (phraseTimerRef.current) {
+      window.clearInterval(phraseTimerRef.current);
+      phraseTimerRef.current = null;
+    }
+    if (finishTimerRef.current) {
+      window.clearTimeout(finishTimerRef.current);
+      finishTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => clearCloudTimers, []);
+
+  const randomCloudCopy = () =>
+    CLOUD_LOADING_COPY[Math.floor(Math.random() * CLOUD_LOADING_COPY.length)].replace('[狗狗名字]', petName);
+
+  const startCloudEntry = (target: string) => {
+    if (cloudEntry) return;
+    clearCloudTimers();
+    setCloudEntry({ phrase: randomCloudCopy(), target });
+    phraseTimerRef.current = window.setInterval(() => {
+      setCloudEntry((current) => (current ? { ...current, phrase: randomCloudCopy() } : current));
+    }, 720);
+    finishTimerRef.current = window.setTimeout(() => {
+      clearCloudTimers();
+      setCloudEntry(null);
+      onSelectRealm();
+    }, 3000);
   };
 
   return (
@@ -105,7 +148,7 @@ export default function Tour({ onSelectRealm }: { onSelectRealm: () => void }) {
                 className="absolute"
                 style={{ top: `${20 + index * 25}%`, left: `${20 + (index % 2) * 40}%` }}
               >
-                <button type="button" className="relative group" onClick={onSelectRealm} aria-label={`查看 ${pet.name} 的空间`}>
+                <button type="button" className="relative group" onClick={() => startCloudEntry(`${pet.name} 的云端空间`)} aria-label={`查看 ${pet.name} 的空间`}>
                   <div className="w-16 h-16 rounded-2xl bg-white p-1 shadow-xl ring-4 ring-emerald-500/20 transition-transform group-hover:scale-110">
                     <img src={pet.images?.[0]} alt={pet.name} className="h-full w-full rounded-xl object-cover" referrerPolicy="no-referrer" />
                   </div>
@@ -144,7 +187,7 @@ export default function Tour({ onSelectRealm }: { onSelectRealm: () => void }) {
                 type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={onSelectRealm}
+                onClick={() => startCloudEntry(realm.name)}
                 className="group relative h-64 overflow-hidden rounded-[3rem] border-4 border-white shadow-2xl"
               >
                 <img src={realm.image} alt={realm.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
@@ -203,6 +246,61 @@ export default function Tour({ onSelectRealm }: { onSelectRealm: () => void }) {
       </AnimatePresence>
 
       <AnimatePresence>
+        {cloudEntry && (
+          <div className="fixed inset-0 z-[260] flex items-center justify-center bg-emerald-950/70 px-6 backdrop-blur-xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              className="relative w-full max-w-md overflow-hidden rounded-[3.2rem] border border-white/15 bg-white/90 p-8 shadow-2xl"
+            >
+              <div className="absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(175,251,216,0.75),transparent_68%)]" />
+              <div className="relative space-y-8">
+                <div className="text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary/70">Cloud leash release</p>
+                  <h3 className="mt-3 text-3xl font-black italic tracking-tight text-slate-900">{petName} 正在进入{cloudEntry.target}</h3>
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">牵引绳已松开，云端地图正在生成安全游玩轨迹。</p>
+                </div>
+
+                <div className="relative mx-auto h-52 overflow-hidden rounded-[2.6rem] bg-gradient-to-br from-emerald-100 via-sky-100 to-white">
+                  <motion.div
+                    initial={{ scaleX: 0.2 }}
+                    animate={{ scaleX: [0.2, 1, 0.2] }}
+                    transition={{ duration: 1.4, repeat: Infinity }}
+                    className="absolute left-10 top-24 h-1 w-44 origin-left rounded-full bg-emerald-500/40"
+                  />
+                  <motion.div
+                    initial={{ x: -10, y: 70, rotate: -12 }}
+                    animate={{ x: 210, y: 30, rotate: 12 }}
+                    transition={{ duration: 2.4, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+                    className="absolute left-6 top-14 flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white text-primary shadow-2xl ring-8 ring-white/50"
+                  >
+                    <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>pets</span>
+                  </motion.div>
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0.4 }}
+                    animate={{ scale: [0.8, 1.4, 0.8], opacity: [0.3, 0.9, 0.3] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                    className="absolute right-10 top-16 h-20 w-20 rounded-full border-2 border-dashed border-primary/40"
+                  />
+                  <div className="absolute bottom-5 left-5 right-5 rounded-[1.8rem] bg-white/75 px-5 py-4 backdrop-blur-md">
+                    <p className="text-sm font-black leading-relaxed text-primary">{cloudEntry.phrase}</p>
+                  </div>
+                </div>
+
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <motion.div
+                    initial={{ width: '8%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 3, ease: 'easeInOut' }}
+                    className="h-full rounded-full bg-primary"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showModal && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center px-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />

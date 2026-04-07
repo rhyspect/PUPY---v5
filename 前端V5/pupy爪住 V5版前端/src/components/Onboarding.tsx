@@ -1,4 +1,4 @@
-﻿import { useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
+﻿import { useState, type ChangeEvent, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { Owner, Pet } from '../types';
 import apiService, { type ApiUser } from '../services/api';
@@ -29,9 +29,18 @@ const HOBBIES = ['咖啡巡店', '摄影', '旅行', '露营', '阅读', '健身
 const CITIES = ['上海', '北京', '深圳', '广州', '杭州', '成都', '南京', '武汉'];
 const DEFAULT_OWNER_PHOTO = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=400';
 const DEFAULT_PET_PHOTO = 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=400';
+const DEMO_ACCESS_CODE = '123456';
+const DEMO_LOGIN = { email: 'demo@pupy.local', password: 'PUPY2026' };
 
 const createSyntheticEmail = (seed: string) => `${seed.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || `pupy${Date.now()}`}@pupy.local`;
 const createBootstrapPassword = (seed: string) => `${seed.replace(/\s+/g, '').slice(0, 12) || 'PUPY'}#2026`;
+const fileToDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('图片读取失败，请重新选择。'));
+    reader.readAsDataURL(file);
+  });
 
 function StepShell({ step, eyebrow, title, description, children }: { step: Step; eyebrow: string; title: string; description: string; children: ReactNode }) {
   return (
@@ -70,11 +79,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [isQuickLogin, setIsQuickLogin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [verifiedUser, setVerifiedUser] = useState<ApiUser | null>(null);
   const [loginData, setLoginData] = useState({ account: '', password: '' });
   const [registerData, setRegisterData] = useState({ phone: '', email: '', code: '', password: '' });
   const [ownerData, setOwnerData] = useState<Partial<Owner>>({
     name: 'PUPY 探索者',
-    photos: [DEFAULT_OWNER_PHOTO],
+    photos: [],
     gender: '女',
     age: 25,
     residentCity: '上海',
@@ -85,7 +95,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   });
   const [petData, setPetData] = useState<Partial<Pet>>({
     name: '小团子',
-    images: [DEFAULT_PET_PHOTO, DEFAULT_PET_PHOTO, DEFAULT_PET_PHOTO, DEFAULT_PET_PHOTO],
+    images: [],
     gender: '公',
     personality: 'E系活泼',
     type: '金毛',
@@ -96,13 +106,57 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     setStep(nextStep);
   };
 
-  const addPhoto = (kind: 'owner' | 'pet') => {
-    const mockPhoto = `https://picsum.photos/seed/${Date.now()}/${kind === 'owner' ? '400/600' : '600/600'}`;
-    if (kind === 'owner') {
-      setOwnerData((prev) => ({ ...prev, photos: [...(prev.photos || []), mockPhoto].slice(0, 6) }));
+  const handlePhotoUpload = async (kind: 'owner' | 'pet', event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.currentTarget.files ?? []) as File[];
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    event.currentTarget.value = '';
+    if (!imageFiles.length) {
+      setSubmitError('请选择 JPG、PNG 或 HEIC 等图片文件。');
       return;
     }
-    setPetData((prev) => ({ ...prev, images: [...(prev.images || []), mockPhoto].slice(0, 4) }));
+
+    setSubmitError(null);
+    const photos = await Promise.all(imageFiles.map(fileToDataUrl));
+    if (kind === 'owner') {
+      setOwnerData((prev) => ({ ...prev, photos: [...(prev.photos || []), ...photos].slice(0, 6) }));
+      return;
+    }
+    setPetData((prev) => ({ ...prev, images: [...(prev.images || []), ...photos].slice(0, 4) }));
+  };
+
+  const validateExperienceAccess = (channel: 'phone' | 'email') => {
+    const account = channel === 'phone' ? registerData.phone.trim() : registerData.email.trim();
+    if (!account) {
+      setSubmitError(channel === 'phone' ? '请先填写手机号。' : '请先填写邮箱。');
+      return false;
+    }
+    if (channel === 'email' && !account.includes('@')) {
+      setSubmitError('请输入有效的邮箱地址。');
+      return false;
+    }
+    if (registerData.code.trim() !== DEMO_ACCESS_CODE) {
+      setSubmitError(`体验验证码请输入 ${DEMO_ACCESS_CODE}。`);
+      return false;
+    }
+    return true;
+  };
+
+  const validateEmailRegistration = () => {
+    const email = registerData.email.trim();
+    if (!email || !email.includes('@')) {
+      setSubmitError('请输入有效的邮箱地址。');
+      return false;
+    }
+    if (registerData.password.trim().length < 6) {
+      setSubmitError('邮箱注册需要设置至少 6 位密码。');
+      return false;
+    }
+    return true;
+  };
+
+  const enterExperience = async (channel: 'phone' | 'email') => {
+    if (!validateExperienceAccess(channel)) return;
+    await finishDemo();
   };
 
   const buildLocalProfile = () => {
@@ -149,6 +203,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       setSubmitError('请先填写邮箱和密码。');
       return;
     }
+    if (
+      loginData.account.trim().toLowerCase() === DEMO_LOGIN.email &&
+      loginData.password.trim() === DEMO_LOGIN.password
+    ) {
+      await finishDemo();
+      return;
+    }
     if (!loginData.account.includes('@')) {
       setSubmitError('当前真实登录仅支持邮箱账号。');
       return;
@@ -163,8 +224,27 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       const petsResult = await apiService.getPets();
       const primaryPet = petsResult.data?.[0];
 
-      if (!user || !token || !primaryPet) {
-        throw new Error('该账号还没有完成宠物建档。');
+      if (!user || !token) {
+        throw new Error('登录成功但会话信息不完整。');
+      }
+
+      if (!primaryPet) {
+        setVerifiedUser(user);
+        setOwnerData((prev) => ({
+          ...prev,
+          name: user.username || prev.name,
+          photos: user.avatar_url ? [user.avatar_url] : prev.photos,
+          gender: user.gender || prev.gender,
+          age: user.age || prev.age,
+          residentCity: user.resident_city || prev.residentCity,
+          frequentCities: user.frequent_cities || prev.frequentCities,
+          hobbies: user.hobbies || prev.hobbies,
+          mbti: user.mbti || prev.mbti,
+          signature: user.signature || prev.signature,
+        }));
+        changeStep('pet_basic');
+        setSubmitError('账号密码已验证，但还没有宠物档案。请补充宠物信息完成进入。');
+        return;
       }
 
       await onComplete({ owner: createOwnerFromApi(user), pet: createPetFromApi(primaryPet, user), mode: 'api', user, token });
@@ -185,9 +265,59 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       : rawName;
     const password = registerData.password.trim() || createBootstrapPassword(registerData.phone || registerData.email || username);
 
+    if (!verifiedUser && !registerData.email.trim() && !registerData.phone.trim()) {
+      setSubmitError('请先填写邮箱或手机号。');
+      return;
+    }
+    if (!verifiedUser && registerData.email.trim() && registerData.password.trim().length < 6) {
+      setSubmitError('邮箱注册需要设置至少 6 位密码。');
+      return;
+    }
+    if (!verifiedUser && registerData.phone.trim() && registerData.code.trim() !== DEMO_ACCESS_CODE) {
+      setSubmitError(`手机号注册验证码请输入 ${DEMO_ACCESS_CODE}。`);
+      return;
+    }
+    if ((!verifiedUser && !(ownerData.photos?.length)) || !(petData.images?.length)) {
+      setSubmitError('请至少上传 1 张主人照片和 1 张宠物照片。');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      if (verifiedUser) {
+        const [userResult, petResult] = await Promise.all([
+          apiService.updateCurrentUser({
+            username,
+            age: owner.age,
+            gender: owner.gender,
+            resident_city: owner.residentCity,
+            frequent_cities: owner.frequentCities,
+            hobbies: owner.hobbies,
+            mbti: owner.mbti,
+            signature: owner.signature,
+            avatar_url: owner.photos?.[0] || owner.avatar,
+            bio: owner.signature,
+          }),
+          apiService.createPet({
+            name: pet.name,
+            type: pet.type,
+            gender: pet.gender,
+            personality: pet.personality,
+            breed: pet.type,
+            images: pet.images,
+            bio: `${pet.name} 已完成建档，准备开始新的社交旅程。`,
+          }),
+        ]);
+        const user = userResult.data || verifiedUser;
+        const apiPet = petResult.data;
+        if (!apiPet) {
+          throw new Error('宠物建档失败，请稍后再试。');
+        }
+        await onComplete({ owner: createOwnerFromApi(user), pet: createPetFromApi(apiPet, user), mode: 'api', user, token: apiService.getToken() });
+        return;
+      }
+
       const bootstrapResult = await apiService.bootstrapOnboarding({
         owner,
         pet,
@@ -232,10 +362,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
       <AnimatePresence mode="wait">
         {step === 'login' && (
-          <StepShell step="login" eyebrow="欢迎回来" title="先确认你的会话身份" description="支持真实邮箱登录，也支持体验模式快速试用。真实登录会优先恢复已建档的宠物与消息记录。">
+          <StepShell step="login" eyebrow="欢迎回来" title="先确认你的会话身份" description="真实登录会校验邮箱和密码；体验模式也需要填写手机号/邮箱与测试验证码 123456，避免无输入直通。">
             <div className="space-y-5 rounded-[2.2rem] frost-card p-6">
               <Field label="邮箱账号"><Input type="email" placeholder="例如：rhyssvv@gmail.com" value={loginData.account} onChange={(event) => setLoginData({ ...loginData, account: event.target.value })} /></Field>
               <Field label="登录密码"><Input type="password" placeholder="输入密码" value={loginData.password} onChange={(event) => setLoginData({ ...loginData, password: event.target.value })} /></Field>
+              <div className="rounded-[1.4rem] bg-primary/5 px-4 py-3 text-xs font-bold leading-relaxed text-primary">
+                本地样本测试账号：{DEMO_LOGIN.email} / {DEMO_LOGIN.password}
+              </div>
               <button type="button" onClick={() => changeStep('forgot_password')} className="text-right text-xs font-black text-primary">忘记密码？</button>
             </div>
             <div className="space-y-4">
@@ -254,26 +387,26 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         )}
 
         {step === 'register_phone' && (
-          <StepShell step="register_phone" eyebrow="手机号入口" title={isQuickLogin ? '手机号体验进入' : '手机号注册'} description={isQuickLogin ? '保留完整视觉流程，但最终进入本地体验模式。' : '完成这一页后继续建立主人与宠物档案。'}>
+          <StepShell step="register_phone" eyebrow="手机号入口" title={isQuickLogin ? '手机号体验进入' : '手机号注册'} description={isQuickLogin ? '请输入手机号与测试验证码 123456，体验模式会进入本地样本数据。' : '请输入手机号与测试验证码 123456，下一步继续建立主人与宠物档案。'}>
             <div className="space-y-5 rounded-[2.2rem] frost-card p-6">
               <Field label="手机号"><Input type="tel" placeholder="输入手机号" value={registerData.phone} onChange={(event) => setRegisterData({ ...registerData, phone: event.target.value })} /></Field>
               <Field label="验证码"><Input type="text" placeholder="输入验证码" value={registerData.code} onChange={(event) => setRegisterData({ ...registerData, code: event.target.value })} /></Field>
             </div>
             <div className="space-y-3">
-              <button type="button" onClick={() => (isQuickLogin ? finishDemo() : changeStep('owner_basic'))} disabled={isSubmitting} className="w-full rounded-[1.8rem] bg-primary py-4 text-white font-black shadow-lg shadow-primary/20 disabled:opacity-60">{isSubmitting ? '处理中…' : isQuickLogin ? '进入体验模式' : '继续完善档案'}</button>
+              <button type="button" onClick={() => (isQuickLogin ? enterExperience('phone') : validateExperienceAccess('phone') && changeStep('owner_basic'))} disabled={isSubmitting} className="w-full rounded-[1.8rem] bg-primary py-4 text-white font-black shadow-lg shadow-primary/20 disabled:opacity-60">{isSubmitting ? '处理中…' : isQuickLogin ? '进入体验模式' : '继续完善档案'}</button>
               <button type="button" onClick={() => changeStep('login')} className="w-full text-sm font-bold text-slate-400">返回登录</button>
             </div>
           </StepShell>
         )}
 
         {step === 'register_email' && (
-          <StepShell step="register_email" eyebrow="邮箱入口" title={isQuickLogin ? '邮箱体验进入' : '邮箱注册'} description={isQuickLogin ? '如果你想先看完整界面，可先走体验链路。' : '邮箱注册更适合长期登录与后续权限管理。'}>
+          <StepShell step="register_email" eyebrow="邮箱入口" title={isQuickLogin ? '邮箱体验进入' : '邮箱注册'} description={isQuickLogin ? '请输入邮箱与测试验证码 123456，体验模式会进入本地样本数据。' : '邮箱注册会通过后端创建真实账号，请设置至少 6 位密码。'}>
             <div className="space-y-5 rounded-[2.2rem] frost-card p-6">
               <Field label="邮箱地址"><Input type="email" placeholder="例如：hello@pupy.app" value={registerData.email} onChange={(event) => setRegisterData({ ...registerData, email: event.target.value })} /></Field>
               <Field label={isQuickLogin ? '验证码' : '登录密码'}><Input type={isQuickLogin ? 'text' : 'password'} placeholder={isQuickLogin ? '输入验证码' : '设置密码'} value={isQuickLogin ? registerData.code : registerData.password} onChange={(event) => isQuickLogin ? setRegisterData({ ...registerData, code: event.target.value }) : setRegisterData({ ...registerData, password: event.target.value })} /></Field>
             </div>
             <div className="space-y-3">
-              <button type="button" onClick={() => (isQuickLogin ? finishDemo() : changeStep('owner_basic'))} disabled={isSubmitting} className="w-full rounded-[1.8rem] bg-primary py-4 text-white font-black shadow-lg shadow-primary/20 disabled:opacity-60">{isSubmitting ? '处理中…' : isQuickLogin ? '进入体验模式' : '继续完善档案'}</button>
+              <button type="button" onClick={() => (isQuickLogin ? enterExperience('email') : validateEmailRegistration() && changeStep('owner_basic'))} disabled={isSubmitting} className="w-full rounded-[1.8rem] bg-primary py-4 text-white font-black shadow-lg shadow-primary/20 disabled:opacity-60">{isSubmitting ? '处理中…' : isQuickLogin ? '进入体验模式' : '继续完善档案'}</button>
               <button type="button" onClick={() => changeStep('login')} className="w-full text-sm font-bold text-slate-400">返回登录</button>
             </div>
           </StepShell>
@@ -295,7 +428,13 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             <div className="space-y-5 rounded-[2.2rem] frost-card p-6">
               <div className="grid grid-cols-3 gap-3">
                 {ownerData.photos?.map((photo, index) => <div key={photo + index} className="aspect-[3/4] overflow-hidden rounded-[1.4rem] bg-slate-100"><img src={photo} className="h-full w-full object-cover" alt="主人照片" /></div>)}
-                {(ownerData.photos?.length || 0) < 6 && <button type="button" onClick={() => addPhoto('owner')} className="aspect-[3/4] rounded-[1.4rem] border border-dashed border-slate-300 bg-white/80 text-slate-400 text-2xl">+</button>}
+                {(ownerData.photos?.length || 0) < 6 && (
+                  <label className="flex aspect-[3/4] cursor-pointer flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-primary/40 bg-white/80 text-center text-primary transition hover:bg-primary/5">
+                    <span className="material-symbols-outlined text-2xl">add_a_photo</span>
+                    <span className="mt-2 px-2 text-[10px] font-black leading-tight">上传主人照片</span>
+                    <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => void handlePhotoUpload('owner', event)} />
+                  </label>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="昵称"><Input type="text" placeholder="输入展示昵称" value={ownerData.name} onChange={(event) => setOwnerData({ ...ownerData, name: event.target.value })} /></Field>
@@ -307,7 +446,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
               <Field label="个人签名"><TextArea rows={3} placeholder="写一句让人记住你的介绍" value={ownerData.signature} onChange={(event) => setOwnerData({ ...ownerData, signature: event.target.value })} /></Field>
             </div>
-            <button type="button" onClick={() => changeStep('owner_hobbies')} className="w-full rounded-[1.8rem] bg-slate-900 py-4 text-white font-black shadow-lg shadow-slate-900/15">继续下一步</button>
+            <button type="button" onClick={() => changeStep('owner_hobbies')} disabled={!ownerData.name || !(ownerData.photos?.length)} className={`w-full rounded-[1.8rem] py-4 font-black shadow-lg ${ownerData.name && ownerData.photos?.length ? 'bg-slate-900 text-white shadow-slate-900/15' : 'bg-slate-100 text-slate-300'}`}>继续下一步</button>
           </StepShell>
         )}
 
@@ -321,7 +460,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         {step === 'pet_basic' && (
           <StepShell step="pet_basic" eyebrow="步骤 3" title="完成宠物身份卡" description="这一步决定发现页、消息页和后台审核里的核心展示信息。">
             <div className="space-y-5 rounded-[2.2rem] frost-card p-6">
-              <div className="grid grid-cols-2 gap-4">{petData.images?.map((photo, index) => <div key={photo + index} className="aspect-square overflow-hidden rounded-[1.6rem] bg-slate-100"><img src={photo} className="h-full w-full object-cover" alt="宠物照片" /></div>)}</div>
+              <div className="grid grid-cols-2 gap-4">
+                {petData.images?.map((photo, index) => <div key={photo + index} className="aspect-square overflow-hidden rounded-[1.6rem] bg-slate-100"><img src={photo} className="h-full w-full object-cover" alt="宠物照片" /></div>)}
+                {(petData.images?.length || 0) < 4 && (
+                  <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-primary/40 bg-white/80 text-center text-primary transition hover:bg-primary/5">
+                    <span className="material-symbols-outlined text-3xl">add_photo_alternate</span>
+                    <span className="mt-2 px-3 text-xs font-black leading-tight">上传宠物照片</span>
+                    <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => void handlePhotoUpload('pet', event)} />
+                  </label>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="宠物昵称"><Input type="text" placeholder="输入宠物名字" value={petData.name} onChange={(event) => setPetData({ ...petData, name: event.target.value })} /></Field>
                 <Field label="品种 / 类型"><Input type="text" placeholder="例如金毛、布偶、柯基" value={petData.type} onChange={(event) => setPetData({ ...petData, type: event.target.value })} /></Field>
@@ -338,8 +486,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               </div>
             </div>
             <div className="space-y-3">
-              <button type="button" onClick={handleRegister} disabled={isSubmitting || !petData.name || (petData.images?.length || 0) < 4} className={`w-full rounded-[1.8rem] py-4 font-black shadow-lg ${!isSubmitting && petData.name && (petData.images?.length || 0) >= 4 ? 'bg-primary text-white shadow-primary/20' : 'bg-slate-100 text-slate-300'}`}>{isSubmitting ? '正在创建账号…' : '完成建档并进入 App'}</button>
-              <button type="button" onClick={() => addPhoto('pet')} className="w-full text-sm font-bold text-slate-400">补一张宠物照片</button>
+              <button type="button" onClick={handleRegister} disabled={isSubmitting || !petData.name || (petData.images?.length || 0) < 1} className={`w-full rounded-[1.8rem] py-4 font-black shadow-lg ${!isSubmitting && petData.name && (petData.images?.length || 0) >= 1 ? 'bg-primary text-white shadow-primary/20' : 'bg-slate-100 text-slate-300'}`}>{isSubmitting ? '正在创建账号…' : '完成建档并进入 App'}</button>
+              <p className="text-center text-xs font-bold text-slate-400">至少上传 1 张宠物照片，最多 4 张。</p>
             </div>
           </StepShell>
         )}

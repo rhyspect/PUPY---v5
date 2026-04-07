@@ -63,6 +63,86 @@ function toneByKind(kind: MarketCard['kind']) {
   return 'bg-emerald-50 text-emerald-600';
 }
 
+function createLocalMarketCards(userPet: Pet): MarketCard[] {
+  const owner = userPet.owner;
+  const image = userPet.images?.[0] || FALLBACK_IMAGE;
+  const products = [
+    {
+      id: 'local-breeding-1',
+      kind: 'breeding' as const,
+      title: `${userPet.type} 同城配对资料审核`,
+      subtitle: `${userPet.name} · ${userPet.type}`,
+      priceLabel: '资料互验',
+      description: '适合测试繁育/配对咨询流程，包含健康记录、性格匹配和线下见面前沟通。',
+      tags: ['配对繁育', userPet.type, userPet.personality],
+      type: 'breeding' as const,
+      category: 'love',
+    },
+    {
+      id: 'local-service-1',
+      kind: 'service' as const,
+      title: `${userPet.name} 同款城市遛宠陪伴`,
+      subtitle: '同城服务 · 2 小时',
+      priceLabel: '¥99 起',
+      description: '用于测试同城服务卡片、私信咨询和服务型发布排版。',
+      tags: ['同城陪伴', '遛宠', '训练'],
+      type: 'service' as const,
+      category: 'walk',
+    },
+    {
+      id: 'local-care-1',
+      kind: 'product' as const,
+      title: '毛发护理与日常清洁套装',
+      subtitle: '护理养护 · 新用户推荐',
+      priceLabel: '¥128',
+      description: '用于测试护理分类、详情弹窗和商品型发布样式。',
+      tags: ['护理养护', '清洁', '毛发'],
+      type: 'care_product' as const,
+      category: 'care',
+    },
+    {
+      id: 'local-food-1',
+      kind: 'product' as const,
+      title: '高蛋白主粮与耐咬玩具组合',
+      subtitle: '主粮用品 · 测试商品',
+      priceLabel: '¥219',
+      description: '用于测试主粮用品分类和商品列表的长标题排版。',
+      tags: ['主粮用品', '主粮', '玩具'],
+      type: 'food' as const,
+      category: 'supermarket',
+    },
+  ];
+
+  return products.map((item) => ({
+    ...item,
+    image,
+    owner,
+    ownerId: undefined,
+    petId: userPet.id,
+    raw: {
+      id: item.id,
+      seller_id: 'local-demo-seller',
+      pet_id: userPet.id,
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      price: item.priceLabel.startsWith('¥') ? Number(item.priceLabel.replace(/[^\d]/g, '')) : null,
+      images: [image],
+      status: 'active',
+      type: item.type,
+    },
+  }));
+}
+
+function filterLocalMarketCards(category: string, userPet: Pet) {
+  const localCards = createLocalMarketCards(userPet);
+  if (category === 'all') return localCards;
+  return localCards.filter((item) => {
+    if (category === 'supermarket') return item.raw.type === 'food' || item.raw.type === 'toy' || item.raw.type === 'care_product';
+    return item.raw.category === category;
+  });
+}
+
 export default function Market({ onChat, currentUser, userPet }: MarketProps) {
   const [activeCategory, setActiveCategory] = useState('care');
   const [selectedItem, setSelectedItem] = useState<MarketCard | null>(null);
@@ -97,9 +177,9 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
         })
         .map(toMarketCard);
 
-      setItems(nextItems);
+      setItems(nextItems.length ? nextItems : filterLocalMarketCards(category, userPet));
     } catch {
-      setItems([]);
+      setItems(filterLocalMarketCards(category, userPet));
     } finally {
       setLoading(false);
     }
@@ -121,7 +201,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
 
   useEffect(() => {
     void loadCategory(activeCategory);
-  }, [activeCategory, searchTerm]);
+  }, [activeCategory, searchTerm, userPet.id]);
 
   useEffect(() => {
     void loadMyListings();
@@ -145,10 +225,10 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
       <section className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 px-6 py-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/70">{'\u96c6\u5e02\u52a8\u7ebf'}</p>
-            <h1 className="font-headline text-4xl font-black italic tracking-tight text-slate-900">服务、配对与好物</h1>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/70">爪住集市</p>
+            <h1 className="font-headline text-4xl font-black italic tracking-tight text-slate-900">配对、服务与好物</h1>
             <p className="max-w-sm text-sm leading-relaxed text-slate-500">
-              这里统一承接真实市场数据、同城服务与繁育申请。你可以筛选、搜索、查看自己的发布，也可以直接发起咨询。
+              爪住集市统一承接真实市场数据、同城服务与繁育申请。你可以筛选、搜索、查看自己的发布，也可以直接发起咨询。
             </p>
           </div>
           <div className="soft-panel rounded-[2rem] border border-white/50 px-4 py-4 text-right">
@@ -431,4 +511,3 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
     </div>
   );
 }
-

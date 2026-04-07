@@ -349,7 +349,7 @@ export default function App() {
           <AnimatePresence mode="wait">
           <motion.div key={currentScreen} initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 20 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
             {currentScreen === 'home' && <Home onMatch={handleMatch} onViewOwner={setSelectedOwner} currentUser={currentUser} userPet={userPet} />}
-            {currentScreen === 'tour' && <Tour onSelectRealm={() => openScreen('messages')} />}
+            {currentScreen === 'tour' && <Tour userPet={userPet} onSelectRealm={() => openScreen('messages')} />}
             {currentScreen === 'messages' && <Messages currentUser={currentUser} userPet={userPet} optimisticMatches={optimisticMatches} onSelectChat={(owner, roomId) => { setActiveChatOwner(owner || null); setActiveChatRoomId(roomId || null); openScreen('chat'); }} onViewOwner={setSelectedOwner} />}
             {currentScreen === 'market' && <Market currentUser={currentUser} userPet={userPet} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); openScreen('chat'); }} />}
             {currentScreen === 'profile' && <Profile userPet={userPet} currentUser={currentUser} isDigitalTwinCreated={isDigitalTwinCreated} onStartCreation={() => openScreen('creation')} onTwinCreated={() => setIsDigitalTwinCreated(true)} onProfileSync={handleProfileSync} />}
@@ -460,7 +460,6 @@ export default function App() {
     </div>
   );
 }
-
 
 
 
