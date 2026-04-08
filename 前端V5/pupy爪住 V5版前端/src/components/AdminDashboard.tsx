@@ -1,6 +1,7 @@
 import { useEffect, useState, startTransition } from 'react';
 import { motion } from 'motion/react';
 import apiService, { type AdminOverview } from '../services/api';
+import BrandMark from './BrandMark';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -101,13 +102,16 @@ export default function AdminDashboard({ onBack, currentUserEmail, canAccess }: 
 
   return (
     <div className="fixed inset-0 z-[180] mx-auto flex max-w-md flex-col bg-surface">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(198,245,223,0.9),transparent_66%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(198,245,223,0.7),transparent_66%),radial-gradient(circle_at_18%_10%,rgba(242,141,45,0.16),transparent_24%),radial-gradient(circle_at_82%_14%,rgba(238,155,177,0.16),transparent_24%)]" />
       <header className="relative z-10 px-5 pt-4">
-        <div className="glass flex items-center gap-4 rounded-[2rem] border border-white/60 px-5 py-4">
+        <div className="brand-surface flex items-center gap-4 rounded-[2rem] px-5 py-4">
           <button onClick={onBack} className="rounded-2xl bg-white/70 p-2 text-slate-500 transition hover:text-primary" aria-label="返回设置">
             <span className="material-symbols-outlined">arrow_back_ios_new</span>
           </button>
           <div>
+            <div className="mb-2">
+              <BrandMark mode="lockup" size="sm" subtitle="Admin · Ops Console" />
+            </div>
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary/70">{'\u540e\u53f0'}</p>
             <h2 className="text-xl font-black tracking-tight text-slate-900">平台运营总览</h2>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">后台管理入口</p>

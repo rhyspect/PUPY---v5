@@ -5,6 +5,7 @@ import type { ApiMarketProduct, ApiUser } from '../services/api';
 import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
+import BrandMark from './BrandMark';
 import {
   addMarketCartItem,
   createMarketOrder,
@@ -435,7 +436,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
 
   return (
     <div className="px-6 space-y-8 pb-10">
-      <section className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 px-6 py-6 shadow-sm">
+      <section className="brand-surface brand-aura ambient-card overflow-hidden rounded-[3rem] px-6 py-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/70">爪住集市</p>
@@ -444,8 +445,8 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
               护理养护用于预约商家，配对繁育用于私讯和申请，主粮用品用于加购、结算与订单记录。
             </p>
           </div>
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[2rem] bg-primary/10 text-primary shadow-sm">
-            <span className="material-symbols-outlined text-3xl">shopping_bag</span>
+          <div className="shrink-0">
+            <BrandMark mode="icon" size="lg" />
           </div>
         </div>
       </section>

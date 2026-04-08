@@ -5,6 +5,7 @@ import type { ApiMatchRecord, ApiNotification, ApiUser } from './services/api';
 import apiService from './services/api';
 import { createPetFromApi } from './utils/adapters';
 import FeatureModal from './components/FeatureModal';
+import BrandMark from './components/BrandMark';
 import type { AppLocale } from './utils/locale';
 import { getStoredLocale, setStoredLocale } from './utils/locale';
 import { getAppCopy } from './utils/copy';
@@ -45,12 +46,10 @@ const DEFAULT_OWNER_AVATAR =
 function ScreenFallback({ label }: { label: string }) {
   return (
     <div className="px-6 py-10">
-      <div className="glass ambient-card flex items-center gap-4 rounded-[2.4rem] border border-white/50 px-5 py-5 shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <span className="material-symbols-outlined text-2xl">progress_activity</span>
-        </div>
+      <div className="brand-surface brand-aura ambient-card flex items-center gap-4 rounded-[2.4rem] px-5 py-5 shadow-sm">
+        <BrandMark mode="icon" size="sm" />
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">PUPY</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">PUPY · 爪住</p>
           <p className="mt-1 text-sm font-bold text-slate-700">{label}</p>
         </div>
       </div>
@@ -272,11 +271,16 @@ export default function App() {
   if (isHydrating) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center mx-auto">
-            <span className="material-symbols-outlined text-4xl text-primary">pets</span>
+        <div className="text-center space-y-5 px-6">
+          <div className="mx-auto flex justify-center">
+            <BrandMark mode="full" size="lg" />
           </div>
-          <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">{copy.shell.hydrating}</p>
+          <div className="space-y-2">
+            <p className="inline-flex items-center justify-center rounded-full brand-pill px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em]">
+              PUPY · 爪住
+            </p>
+            <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-400">{copy.shell.hydrating}</p>
+          </div>
         </div>
       </div>
     );
@@ -296,7 +300,7 @@ export default function App() {
 
   return (
     <div className="ambient-shell relative min-h-screen max-w-md mx-auto overflow-x-hidden bg-surface">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(175,251,216,0.65),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(175,251,216,0.48),transparent_60%),radial-gradient(circle_at_18%_12%,rgba(242,141,45,0.18),transparent_24%),radial-gradient(circle_at_82%_10%,rgba(238,155,177,0.18),transparent_22%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-[radial-gradient(circle_at_bottom,rgba(191,219,254,0.3),transparent_60%)]" />
       <header className="fixed top-0 left-0 right-0 z-50 max-w-md mx-auto flex justify-between items-center px-6 py-4 glass border-b border-white/40">
         <div className="flex items-center gap-3">
@@ -304,7 +308,7 @@ export default function App() {
             <img src={userPet.images?.[0] || DEFAULT_OWNER_AVATAR} alt={userPet.name} className="w-full h-full object-cover" />
           </button>
           <div>
-            <span className="text-2xl font-black text-primary italic tracking-tight font-headline">PUPY</span>
+            <BrandMark mode="lockup" size="sm" subtitle="爪住 · Pet Cloud" />
             <div className="flex items-center gap-2 mt-1">
               <span className={`w-2 h-2 rounded-full ${backendStatus.connected ? 'bg-emerald-500' : 'bg-amber-400'}`} />
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
@@ -377,6 +381,10 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="brand-surface brand-aura rounded-[2.3rem] px-5 py-4 mb-6">
+                <BrandMark mode="lockup" size="sm" subtitle="爪住 · Pet Social Product" />
+              </div>
+
               <nav className="space-y-4">
                 <button onClick={() => { setIsFiltersOpen(true); setIsDrawerOpen(false); }} className="w-full flex items-center gap-4 p-4 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-2xl transition-all">
                   <span className="material-symbols-outlined">filter_list</span>
@@ -445,6 +453,4 @@ export default function App() {
     </div>
   );
 }
-
-
 

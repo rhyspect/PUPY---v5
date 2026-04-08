@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import FeatureModal from './FeatureModal';
+import BrandMark from './BrandMark';
 import type { AppLocale } from '../utils/locale';
 import { localeOptions } from '../utils/locale';
 import { getAppCopy } from '../utils/copy';
@@ -91,6 +92,9 @@ export default function Settings({
             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">宠物与账号</h3>
           </div>
           <div className="frost-card floating-highlight rounded-[2.6rem] px-6 py-6">
+            <div className="mb-5">
+              <BrandMark mode="lockup" size="sm" subtitle="爪住 · Account & Companion Controls" />
+            </div>
             <div className="flex items-center gap-4">
               <div className="h-18 w-18 overflow-hidden rounded-[1.6rem] ring-4 ring-primary/10">
                 <img src={userPet?.image || DEFAULT_PET_IMAGE} alt={userPet?.name || 'Pet'} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
@@ -108,7 +112,7 @@ export default function Settings({
           <div className="px-1">
             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">后端状态</h3>
           </div>
-          <div className="glass rounded-[2.6rem] border border-white/50 p-6 shadow-sm space-y-4">
+          <div className="brand-surface rounded-[2.6rem] p-6 shadow-sm space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-black text-slate-900">{copy.settings.apiConnection}</p>

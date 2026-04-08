@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { Owner, Pet } from '../types';
 import apiService, { type ApiUser } from '../services/api';
 import { createOwnerFromApi, createPetFromApi } from '../utils/adapters';
+import BrandMark from './BrandMark';
 
 type Step =
   | 'login'
@@ -375,11 +376,17 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   return (
     <div className="fixed inset-0 z-[300] mx-auto flex max-w-md flex-col overflow-y-auto bg-surface no-scrollbar">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(198,245,223,0.9),transparent_66%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(198,245,223,0.72),transparent_66%),radial-gradient(circle_at_18%_10%,rgba(242,141,45,0.18),transparent_24%),radial-gradient(circle_at_82%_14%,rgba(238,155,177,0.18),transparent_24%)]" />
       <div className="relative z-10 px-6 pt-6">
-        <div className="frost-card rounded-[2.2rem] px-5 py-4 text-center floating-highlight">
-          <p className="text-[11px] font-black uppercase tracking-[0.28em] text-primary/70">PUPY</p>
-          <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">默认中文 · 真实建档链路</p>
+        <div className="brand-surface brand-aura rounded-[2.4rem] px-5 py-5 floating-highlight">
+          <div className="flex items-center gap-4">
+            <BrandMark mode="full" size="md" className="shrink-0" />
+            <div className="min-w-0 text-left">
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-primary/70">PUPY · 爪住</p>
+              <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">默认中文 · 真实建档链路</p>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-600">毛绒感 Logo 只在品牌触点轻量出现，整体仍保持专业、克制、科技化的产品调性。</p>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useId } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import BrandMark from './BrandMark';
 
 interface FeatureModalProps {
   open: boolean;
@@ -64,7 +65,7 @@ export default function FeatureModal({
             animate={prefersReducedMotion ? { opacity: 1 } : { scale: 1, opacity: 1, y: 0 }}
             exit={prefersReducedMotion ? { opacity: 0 } : { scale: 0.96, opacity: 0, y: 12 }}
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-            className="ambient-card glass relative w-full max-w-sm rounded-[2.8rem] p-8 shadow-2xl"
+            className="ambient-card brand-surface relative w-full max-w-sm rounded-[2.8rem] p-8 shadow-2xl"
           >
             <button
               type="button"
@@ -76,8 +77,8 @@ export default function FeatureModal({
             </button>
 
             <div className="relative z-10 space-y-6">
-              <div className="space-y-2 pr-10">
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">PUPY</p>
+              <div className="space-y-3 pr-10">
+                <BrandMark mode="lockup" size="sm" subtitle="爪住 · Product Controls" />
                 <h3 id={titleId} className="text-[1.75rem] leading-tight font-black text-slate-900 tracking-tight">
                   {title}
                 </h3>

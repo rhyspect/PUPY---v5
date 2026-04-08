@@ -13,6 +13,7 @@ import type {
 import apiService from '../services/api';
 import type { Pet } from '../types';
 import { createOwnerFromApi, createPetFromApi } from '../utils/adapters';
+import BrandMark from './BrandMark';
 import {
   MARKET_ASSET_EVENT,
   formatAssetPrice,
@@ -312,7 +313,7 @@ export default function Profile({
 
   return (
     <div className="px-6 space-y-8 pb-10">
-      <section className="glass ambient-card overflow-hidden rounded-[3rem] border border-white/50 px-6 py-6 shadow-sm">
+      <section className="brand-surface brand-aura ambient-card overflow-hidden rounded-[3rem] px-6 py-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-primary/70">{'\u4e2a\u4eba\u7a7a\u95f4'}</p>
@@ -320,6 +321,9 @@ export default function Profile({
             <p className="max-w-sm text-sm leading-relaxed text-slate-500">这里统一承接真实档案、宠物分身、通知、匹配进度和你的市场资产，确保主人视角和后台数据完全一致。</p>
           </div>
           <div className="soft-panel rounded-[2rem] border border-white/50 px-4 py-4 text-right">
+            <div className="mb-3 flex justify-end">
+              <BrandMark mode="icon" size="sm" />
+            </div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">欢迎回来</p>
             <p className="mt-2 text-sm font-black text-slate-900">{owner.name}</p>
             <p className="mt-1 text-xs text-slate-400">{profilePet.name} · {profilePet.type}</p>

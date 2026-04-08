@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ApiDiaryRecord } from '../services/api';
 import apiService from '../services/api';
+import BrandMark from './BrandMark';
 
 interface DiaryProps {
   onBack: () => void;
@@ -93,7 +94,9 @@ export default function Diary({ onBack }: DiaryProps) {
             <span className="material-symbols-outlined">arrow_back_ios_new</span>
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary/70">PUPY Diary</p>
+            <div className="mb-2">
+              <BrandMark mode="lockup" size="sm" subtitle="Diary · Daily Companion Archive" />
+            </div>
             <h2 className="text-xl font-black tracking-tight text-slate-900">宠物日记</h2>
           </div>
           <button
