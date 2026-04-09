@@ -13,7 +13,7 @@ import type {
 import apiService from '../services/api';
 import type { Pet } from '../types';
 import { createOwnerFromApi, createPetFromApi } from '../utils/adapters';
-import BrandMark from './BrandMark';
+import BrandEmptyState from './BrandEmptyState';
 import {
   MARKET_ASSET_EVENT,
   formatAssetPrice,
@@ -337,7 +337,9 @@ export default function Profile({
           </div>
           <div className="soft-panel rounded-[2rem] border border-white/50 px-4 py-4 text-right">
             <div className="mb-3 flex justify-end">
-              <BrandMark mode="icon" size="sm" />
+              <span className="inline-flex items-center rounded-full brand-pill px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary/75">
+                PUPY · 爪住
+              </span>
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">欢迎回来</p>
             <p className="mt-2 text-sm font-black text-slate-900">{owner.name}</p>
@@ -511,9 +513,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">最近 8 条</span>
               </div>
               {diaries.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  还没有新的日记内容，后续发布后会同步显示在这里。
-                </div>
+                <BrandEmptyState compact icon="menu_book" title="还没有新的日记内容，后续发布后会同步显示在这里。" />
               ) : (
                 <div className="space-y-4">
                   {diaries.map((diary) => (
@@ -638,9 +638,7 @@ export default function Profile({
                 </button>
               </div>
               {prayers.length === 0 ? (
-                <div className="soft-panel rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">
-                  还没有祈愿记录，发一条试试看。
-                </div>
+                <BrandEmptyState compact icon="auto_awesome" title="还没有祈愿记录，发一条试试看。" />
               ) : (
                 <div className="space-y-4">
                   {prayers.map((record) => (
@@ -696,9 +694,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">合计 {formatAssetPrice(cartTotal)}</span>
               </div>
               {cartItems.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  还没有加购商品。去爪住集市的主粮用品页选择数量并加入购物车后，会同步显示在这里。
-                </div>
+                <BrandEmptyState compact icon="shopping_bag" title="还没有加购商品。去爪住集市的主粮用品页选择数量并加入购物车后，会同步显示在这里。" />
               ) : (
                 <div className="space-y-3">
                   {cartItems.map((item) => (
@@ -729,9 +725,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">购物结算 / 商家预约</span>
               </div>
               {marketOrders.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  还没有订单记录。主粮用品结算和护理养护预约会沉淀到这里。
-                </div>
+                <BrandEmptyState compact icon="receipt_long" title="还没有订单记录。主粮用品结算和护理养护预约会沉淀到这里。" />
               ) : (
                 <div className="space-y-3">
                   {marketOrders.map((order) => (
@@ -769,9 +763,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">真实市场数据</span>
               </div>
               {sellerProducts.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  你还没有新的市场发布。
-                </div>
+                <BrandEmptyState compact icon="storefront" title="你还没有新的市场发布。" />
               ) : (
                 <div className="space-y-3">
                   {sellerProducts.map((item) => (
@@ -806,9 +798,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">点击后标记已读</span>
               </div>
               {notifications.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  暂时没有新的系统通知。
-                </div>
+                <BrandEmptyState compact icon="notifications" title="暂时没有新的系统通知。" />
               ) : (
                 <div className="space-y-3">
                   {notifications.map((item) => (
@@ -843,9 +833,7 @@ export default function Profile({
                 <span className="text-[10px] font-bold text-slate-400">最近 6 条</span>
               </div>
               {matches.length === 0 ? (
-                <div className="glass ambient-card rounded-[2.5rem] border border-white/50 p-6 shadow-sm text-sm text-slate-400 text-center">
-                  还没有新的匹配记录。
-                </div>
+                <BrandEmptyState compact icon="favorite" title="还没有新的匹配记录。" />
               ) : (
                 <div className="space-y-3">
                   {matches.slice(0, 6).map((match) => {

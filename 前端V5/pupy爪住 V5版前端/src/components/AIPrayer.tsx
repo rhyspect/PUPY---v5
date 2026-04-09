@@ -2,6 +2,7 @@
 import { motion } from 'motion/react';
 import type { ApiPrayerRecord } from '../services/api';
 import apiService from '../services/api';
+import BrandEmptyState from './BrandEmptyState';
 
 interface AIPrayerProps {
   onBack: () => void;
@@ -163,13 +164,11 @@ export default function AIPrayer({ onBack }: AIPrayerProps) {
           {loading ? (
             <div className="frost-card rounded-[2.4rem] p-8 text-center text-sm text-slate-400">正在同步 AI 祈愿数据…</div>
           ) : records.length === 0 ? (
-            <div className="frost-card rounded-[2.4rem] p-8 text-center space-y-3">
-              <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-[2rem] bg-primary/10 text-primary">
-                <span className="material-symbols-outlined text-4xl">neurology</span>
-              </div>
-              <h4 className="text-lg font-black text-slate-900">还没有新的祈愿记录</h4>
-              <p className="text-sm leading-relaxed text-slate-500">从上面的输入框开始，给今天的陪伴留一句想说的话。</p>
-            </div>
+            <BrandEmptyState
+              icon="neurology"
+              title="还没有新的祈愿记录"
+              description="从上面的输入框开始，给今天的陪伴留一句想说的话。"
+            />
           ) : (
             <div className="space-y-4">
               {records.map((record) => (

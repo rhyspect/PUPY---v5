@@ -5,6 +5,7 @@ import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromRuntimeSession } from '../utils/appDataAdapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
+import BrandEmptyState from './BrandEmptyState';
 
 interface ChatProps {
   owner: Owner | null;
@@ -373,7 +374,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, runtimeS
                   <span className="rounded-full bg-slate-100 px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{copy.roomConnected}</span>
                 </div>
                 {messages.length === 0 ? (
-                  <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyOwner}</div>
+                  <BrandEmptyState compact icon="waving_hand" title={copy.emptyOwner} />
                 ) : (
                   messages.map((msg) => {
                     const sent = msg.sender_id === currentUser?.id;
@@ -391,13 +392,13 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, runtimeS
                 )}
               </>
             ) : (
-              <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.roomHint}</div>
+              <BrandEmptyState compact icon="forum" title={copy.roomHint} />
             )}
           </div>
         ) : (
           <div id="chat-pet-panel" role="tabpanel" aria-labelledby="chat-pet-tab" className="space-y-4">
             {prayers.length === 0 ? (
-              <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyPet}</div>
+              <BrandEmptyState compact icon="pets" title={copy.emptyPet} />
             ) : (
               prayers.map((record) => (
                 <motion.div key={record.id} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="glass space-y-3 rounded-[2rem] border border-white/50 p-5">

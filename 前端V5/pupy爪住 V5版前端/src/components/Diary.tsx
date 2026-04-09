@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { ApiDiaryRecord, AppDiarySummary } from '../services/api';
 import apiService from '../services/api';
 import BrandMark from './BrandMark';
+import BrandEmptyState from './BrandEmptyState';
 
 interface DiaryProps {
   onBack: () => void;
@@ -154,20 +155,13 @@ export default function Diary({ onBack }: DiaryProps) {
         {loading ? (
           <div className="frost-card rounded-[2.4rem] p-8 text-center text-sm text-slate-400">正在同步真实日记数据…</div>
         ) : entries.length === 0 ? (
-          <div className="frost-card rounded-[2.4rem] p-8 text-center space-y-4">
-            <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-[2rem] bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-4xl">auto_stories</span>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-black text-slate-900">还没有新的日记</h3>
-              <p className="text-sm leading-relaxed text-slate-500">
-                先写下今天散步、喂食、训练或社交的小片段，后续会在个人页和日记页一起展示。
-              </p>
-            </div>
-            <button type="button" onClick={() => setShowComposer(true)} className="rounded-[1.8rem] bg-primary px-5 py-3 text-sm font-black text-white shadow-lg shadow-primary/20">
-              写第一篇日记
-            </button>
-          </div>
+          <BrandEmptyState
+            icon="auto_stories"
+            title="还没有新的日记"
+            description="先写下今天散步、喂食、训练或社交的小片段，后续会在个人页和日记页一起展示。"
+            actionLabel="写第一篇日记"
+            onAction={() => setShowComposer(true)}
+          />
         ) : (
           <div className="space-y-5">
             {entries.map((entry) => (

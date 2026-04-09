@@ -6,6 +6,7 @@ import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 import BrandMark from './BrandMark';
+import BrandEmptyState from './BrandEmptyState';
 import {
   MARKET_ASSET_EVENT,
   addMarketCartItem,
@@ -588,7 +589,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
             </p>
           </div>
           <div className="shrink-0">
-            <BrandMark mode="icon" size="lg" />
+            <BrandMark mode="icon" size="md" />
           </div>
         </div>
       </section>
@@ -723,7 +724,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
         {loading ? (
           <div className="glass ambient-card rounded-[2.6rem] border border-white/50 p-8 text-center text-sm text-slate-400 shadow-sm">正在同步真实市场数据…</div>
         ) : filteredItems.length === 0 ? (
-          <div className="glass ambient-card rounded-[2.6rem] border border-white/50 p-8 text-center text-sm text-slate-400 shadow-sm">当前筛选下还没有内容，可以先换个分类看看。</div>
+          <BrandEmptyState compact icon="shopping_bag" title="当前筛选下还没有内容，可以先换个分类看看。" />
         ) : activeCategory === 'love' ? (
           <div className="grid grid-cols-2 gap-4">
             {filteredItems.map((item) => (

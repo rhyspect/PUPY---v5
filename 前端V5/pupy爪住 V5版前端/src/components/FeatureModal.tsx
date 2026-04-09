@@ -77,8 +77,14 @@ export default function FeatureModal({
             </button>
 
             <div className="relative z-10 space-y-6">
-              <div className="space-y-3 pr-10">
-                <BrandMark mode="lockup" size="sm" subtitle="爪住 · Product Controls" />
+              <div className="brand-modal-head space-y-4">
+                <div className="flex items-center gap-3">
+                  <BrandMark mode="icon" size="sm" />
+                  <div className="min-w-0">
+                    <p className="brand-wordmark text-base font-black leading-none tracking-tight">PUPY</p>
+                    <p className="mt-1 truncate text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">爪住 · Product Controls</p>
+                  </div>
+                </div>
                 <h3 id={titleId} className="text-[1.75rem] leading-tight font-black text-slate-900 tracking-tight">
                   {title}
                 </h3>

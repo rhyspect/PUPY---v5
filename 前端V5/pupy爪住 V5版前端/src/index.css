@@ -242,6 +242,95 @@
   border: 1px solid rgba(242, 141, 45, 0.2);
 }
 
+.brand-empty-state {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 249, 245, 0.78)),
+    linear-gradient(135deg, rgba(242, 141, 45, 0.12), rgba(238, 155, 177, 0.14));
+  border-color: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    0 22px 56px rgba(122, 81, 59, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.brand-empty-state::before {
+  content: "";
+  position: absolute;
+  inset: -18% auto auto -12%;
+  width: 11rem;
+  height: 11rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(242, 141, 45, 0.16), transparent 68%);
+  pointer-events: none;
+}
+
+.brand-empty-state::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -34% auto;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(238, 155, 177, 0.14), transparent 68%);
+  pointer-events: none;
+}
+
+.brand-nav-shell {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 248, 244, 0.76)),
+    linear-gradient(135deg, rgba(242, 141, 45, 0.08), rgba(238, 155, 177, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 24px 58px rgba(122, 81, 59, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.brand-nav-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0 12% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(242, 141, 45, 0.4), rgba(238, 155, 177, 0.35), transparent);
+  pointer-events: none;
+}
+
+.brand-nav-shell::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% -48% 18%;
+  height: 5rem;
+  background: radial-gradient(circle, rgba(242, 141, 45, 0.12), transparent 64%);
+  pointer-events: none;
+}
+
+.brand-nav-item {
+  position: relative;
+  min-width: 3.9rem;
+}
+
+.brand-nav-item-active {
+  background: linear-gradient(135deg, var(--color-brand-amber), var(--color-brand-blush));
+  box-shadow:
+    0 18px 28px rgba(164, 90, 51, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.brand-modal-head {
+  position: relative;
+  padding: 0.25rem 2.75rem 0.25rem 0;
+}
+
+.brand-modal-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 2.75rem;
+  bottom: -0.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(242, 141, 45, 0.2), rgba(238, 155, 177, 0.16), transparent);
+}
+
 .brand-aura {
   position: relative;
   overflow: hidden;

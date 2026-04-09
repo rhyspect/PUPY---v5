@@ -359,10 +359,15 @@ export default function App() {
         </Suspense>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto p-4 flex justify-center">
-        <div className="glass w-full rounded-[2.7rem] border border-white/45 px-4 py-2 flex items-center justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 mx-auto flex max-w-md justify-center p-4">
+        <div className="brand-nav-shell w-full rounded-[2.7rem] px-4 py-2 flex items-center justify-around">
           {navItems.map((item) => (
-            <button key={item.id} aria-label={item.label} onClick={() => openScreen(item.id)} className={`flex flex-col items-center justify-center rounded-3xl p-3 transition-all duration-300 ${currentScreen === item.id ? 'bg-primary text-white scale-110 shadow-lg shadow-primary/20' : 'text-slate-500 hover:bg-white/70'}`}>
+            <button
+              key={item.id}
+              aria-label={item.label}
+              onClick={() => openScreen(item.id)}
+              className={`brand-nav-item flex flex-col items-center justify-center rounded-3xl p-3 transition-all duration-300 ${currentScreen === item.id ? 'brand-nav-item-active scale-[1.04] text-white' : 'text-slate-500 hover:bg-white/65'}`}
+            >
               <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: currentScreen === item.id ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
               <span className="text-[8px] font-bold mt-1 tracking-tight leading-none">{item.label}</span>
             </button>

@@ -4,6 +4,7 @@ import type { ApiMarketProduct } from '../services/api';
 import apiService from '../services/api';
 import type { Owner } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
+import BrandEmptyState from './BrandEmptyState';
 
 interface BreedingProps {
   onBack: () => void;
@@ -241,13 +242,11 @@ export default function Breeding({ onBack, onChat }: BreedingProps) {
         {loading ? (
           <div className="frost-card rounded-[2.4rem] p-8 text-center text-sm text-slate-400">正在同步繁育配对数据…</div>
         ) : listings.length === 0 ? (
-          <div className="frost-card rounded-[2.4rem] p-8 text-center space-y-3">
-            <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-[2rem] bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-4xl">pet_supplies</span>
-            </div>
-            <h4 className="text-lg font-black text-slate-900">暂时没有新的配对档案</h4>
-            <p className="text-sm leading-relaxed text-slate-500">稍后再刷新看看，或者先去集市发布你自己的繁育资料。</p>
-          </div>
+          <BrandEmptyState
+            icon="pet_supplies"
+            title="暂时没有新的配对档案"
+            description="稍后再刷新看看，或者先去集市发布你自己的繁育资料。"
+          />
         ) : (
           <div className="space-y-4">
             {listings.map((item) => (

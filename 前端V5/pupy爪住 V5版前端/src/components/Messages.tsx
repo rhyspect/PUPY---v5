@@ -6,6 +6,7 @@ import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 import { createOwnerFromRuntimeSession } from '../utils/appDataAdapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
+import BrandEmptyState from './BrandEmptyState';
 
 interface MessagesProps {
   onSelectChat: (payload: {
@@ -443,7 +444,7 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                     {copy.loadingRooms}
                   </div>
                 ) : ownerSessions.length === 0 ? (
-                  <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyRooms}</div>
+                  <BrandEmptyState compact icon="chat_bubble" title={copy.emptyRooms} />
                 ) : (
                   ownerSessions.map((session) => {
                     const owner = createOwnerFromRuntimeSession(session);
@@ -530,7 +531,7 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
               <section className="space-y-4">
                 <h3 className="px-2 text-xs font-black uppercase tracking-widest text-slate-400">{copy.petFeedSection}</h3>
                 {petFeed.length === 0 ? (
-                  <div className="glass rounded-[2.5rem] border border-white/50 p-6 text-center text-sm text-slate-400 shadow-sm">{copy.emptyFeed}</div>
+                  <BrandEmptyState compact icon="pets" title={copy.emptyFeed} />
                 ) : (
                   petFeed.map((item) => {
                     const isNotification = item.kind === 'notification';

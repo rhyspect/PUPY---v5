@@ -2,6 +2,7 @@ import { useEffect, useState, startTransition } from 'react';
 import { motion } from 'motion/react';
 import apiService, { type AdminOverview } from '../services/api';
 import BrandMark from './BrandMark';
+import BrandEmptyState from './BrandEmptyState';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -11,10 +12,7 @@ interface AdminDashboardProps {
 
 function EmptyCard({ title, description }: { title: string; description: string }) {
   return (
-    <div className="soft-panel rounded-[1.7rem] border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-      <p className="font-black text-slate-700">{title}</p>
-      <p className="mt-1 leading-relaxed">{description}</p>
-    </div>
+    <BrandEmptyState compact icon="monitoring" title={title} description={description} className="rounded-[1.7rem]" />
   );
 }
 

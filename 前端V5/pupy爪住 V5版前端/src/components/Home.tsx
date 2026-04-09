@@ -6,6 +6,7 @@ import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
 import { PETS } from '../constants';
+import BrandEmptyState from './BrandEmptyState';
 
 interface HomeProps {
   onMatch: (payload?: { owner?: Owner; match?: ApiMatchRecord }) => void;
@@ -242,15 +243,15 @@ export default function Home({ onMatch, onViewOwner, currentUser, userPet }: Hom
 
   if (!cards.length) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center space-y-4 px-10 text-center">
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
-          <span className="material-symbols-outlined text-4xl text-slate-300">travel_explore</span>
-        </div>
-        <h3 className="text-xl font-bold text-slate-800">{copy.emptyTitle}</h3>
-        <p className="text-sm leading-relaxed text-slate-400">{error || copy.emptyDescription}</p>
-        <button type="button" onClick={() => void loadDiscovery()} className="rounded-2xl bg-primary px-8 py-3 font-bold text-white shadow-lg shadow-primary/20 transition-transform active:scale-95">
-          {copy.retry}
-        </button>
+      <div className="flex h-[60vh] items-center justify-center px-6">
+        <BrandEmptyState
+          icon="travel_explore"
+          title={copy.emptyTitle}
+          description={error || copy.emptyDescription}
+          actionLabel={copy.retry}
+          onAction={() => void loadDiscovery()}
+          className="w-full max-w-sm"
+        />
       </div>
     );
   }
