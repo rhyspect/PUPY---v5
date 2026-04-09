@@ -1,13 +1,19 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { ApiChatRoom, ApiMatchRecord, ApiNotification, ApiPrayerRecord, ApiUser } from '../services/api';
+import type { ApiMatchRecord, ApiNotification, ApiPrayerRecord, ApiUser, AppRuntimeChatSession } from '../services/api';
 import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
+import { createOwnerFromRuntimeSession } from '../utils/appDataAdapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
 
 interface MessagesProps {
-  onSelectChat: (owner?: Owner, chatRoomId?: string) => void;
+  onSelectChat: (payload: {
+    owner?: Owner;
+    chatRoomId?: string;
+    runtimeSessionId?: string;
+    runtimeSessionType?: 'owner' | 'pet';
+  }) => void;
   onViewOwner: (owner: Owner) => void;
   currentUser: ApiUser | null;
   userPet: Pet;
@@ -118,6 +124,17 @@ type PetFeedItem =
       time?: string;
       notificationId: string;
       isRead: boolean;
+    }
+  | {
+      id: string;
+      kind: 'session';
+      title: string;
+      body: string;
+      raw?: string;
+      time?: string;
+      isRead: boolean;
+      sessionId: string;
+      owner: Owner;
     };
 
 function formatTimestamp(value: string | undefined, locale: AppLocale, fallback: string) {
@@ -142,7 +159,8 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
   const locale = getStoredLocale();
   const copy = useMemo(() => copyByLocale[locale], [locale]);
   const [activeTab, setActiveTab] = useState<'owner' | 'pet'>('owner');
-  const [chatRooms, setChatRooms] = useState<ApiChatRoom[]>([]);
+  const [ownerSessions, setOwnerSessions] = useState<AppRuntimeChatSession[]>([]);
+  const [petSessions, setPetSessions] = useState<AppRuntimeChatSession[]>([]);
   const [matches, setMatches] = useState<ApiMatchRecord[]>([]);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [prayers, setPrayers] = useState<ApiPrayerRecord[]>([]);
@@ -155,14 +173,16 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
     setLoading(true);
     setError(null);
     try {
-      const [roomsResult, matchesResult, notificationsResult, prayersResult] = await Promise.all([
-        apiService.getChatRooms(),
+      const [ownerSessionsResult, petSessionsResult, matchesResult, notificationsResult, prayersResult] = await Promise.all([
+        apiService.getAppChatSessions('owner'),
+        apiService.getAppChatSessions('pet'),
         apiService.getMatches(),
         apiService.getNotifications(),
         apiService.getPrayerRecords(),
       ]);
 
-      setChatRooms(roomsResult.data || []);
+      setOwnerSessions(ownerSessionsResult.data || []);
+      setPetSessions(petSessionsResult.data || []);
       setMatches(matchesResult.data || []);
       setNotifications(notificationsResult.data || []);
       setPrayers(prayersResult.data || []);
@@ -202,6 +222,18 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
   const matchedOnly = useMemo(() => mergedMatches.filter((item) => item.status === 'matched'), [mergedMatches]);
 
   const petFeed = useMemo<PetFeedItem[]>(() => {
+    const sessionCards: PetFeedItem[] = petSessions.map((session) => ({
+      id: `session-${session.id}`,
+      kind: 'session',
+      title: session.title,
+      body: session.latestSnippet || session.counterpart?.signature || copy.emptyFeed,
+      raw: session.relatedPets.join(' · '),
+      time: session.updatedAt || session.createdAt,
+      isRead: session.unreadCount === 0,
+      sessionId: session.id,
+      owner: createOwnerFromRuntimeSession(session),
+    }));
+
     const prayerCards: PetFeedItem[] = prayers.map((record) => ({
       id: `prayer-${record.id}`,
       kind: 'prayer',
@@ -223,10 +255,10 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
       isRead: item.is_read,
     }));
 
-    return [...prayerCards, ...notificationCards]
+    return [...sessionCards, ...prayerCards, ...notificationCards]
       .sort((a, b) => new Date(b.time || '').getTime() - new Date(a.time || '').getTime())
       .slice(0, 10);
-  }, [copy.notificationTitle, copy.prayerTitle, notifications, prayers]);
+  }, [copy.emptyFeed, copy.notificationTitle, copy.prayerTitle, notifications, petSessions, prayers]);
 
   const submitWhisper = async () => {
     const value = input.trim();
@@ -235,9 +267,24 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
     setSubmitting(true);
     setError(null);
     try {
-      const result = await apiService.createPrayer(userPet.id, value);
-      if (result.data) {
-        setPrayers((prev) => [result.data as ApiPrayerRecord, ...prev]);
+      const latestPetSession = petSessions[0];
+      if (latestPetSession) {
+        const result = await apiService.sendAppChatMessage(latestPetSession.id, {
+          content: value,
+          role: 'pet',
+          senderName: userPet.name,
+        });
+        if (result.data) {
+          setPetSessions((prev) => {
+            const next = prev.filter((item) => item.id !== result.data?.id);
+            return [result.data as AppRuntimeChatSession, ...next];
+          });
+        }
+      } else {
+        const result = await apiService.createPrayer(userPet.id, value);
+        if (result.data) {
+          setPrayers((prev) => [result.data as ApiPrayerRecord, ...prev]);
+        }
       }
       setInput('');
     } catch (requestError) {
@@ -328,7 +375,7 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                 {[
                   { label: copy.matchedCount, value: matchedOnly.length },
                   { label: copy.pendingCount, value: pendingMatches.length },
-                  { label: copy.roomsCount, value: chatRooms.length },
+                  { label: copy.roomsCount, value: ownerSessions.length },
                 ].map((item) => (
                   <div key={item.label} className="glass rounded-[2rem] border border-white/50 p-4 shadow-sm">
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
@@ -389,22 +436,22 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
               <section data-testid="chat-rooms-section" className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{copy.roomsSection}</h3>
-                  <span className="text-[10px] font-bold text-slate-400">{chatRooms.length} {copy.roomsSuffix}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{ownerSessions.length} {copy.roomsSuffix}</span>
                 </div>
                 {loading ? (
                   <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400" role="status">
                     {copy.loadingRooms}
                   </div>
-                ) : chatRooms.length === 0 ? (
+                ) : ownerSessions.length === 0 ? (
                   <div className="glass rounded-[2rem] border border-white/50 p-6 text-center text-sm text-slate-400">{copy.emptyRooms}</div>
                 ) : (
-                  chatRooms.map((room) => {
-                    const owner = createOwnerFromApi(room.other_user || {});
+                  ownerSessions.map((session) => {
+                    const owner = createOwnerFromRuntimeSession(session);
                     return (
                       <button
                         type="button"
-                        key={room.id}
-                        onClick={() => onSelectChat(owner, room.id)}
+                        key={session.id}
+                        onClick={() => onSelectChat({ owner, runtimeSessionId: session.id, runtimeSessionType: 'owner' })}
                         className="glass flex w-full items-center gap-4 rounded-[2rem] border border-white/50 p-4 text-left shadow-sm transition-transform active:scale-[0.98]"
                         aria-label={`${copy.ownerTab}: ${owner.name}`}
                       >
@@ -415,9 +462,9 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                             alt={owner.name}
                             referrerPolicy="no-referrer"
                           />
-                          {!!room.unread_count && (
+                          {!!session.unreadCount && (
                             <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold text-white">
-                              {room.unread_count}
+                              {session.unreadCount}
                             </span>
                           )}
                         </div>
@@ -425,10 +472,10 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                           <div className="mb-1 flex items-center justify-between gap-3">
                             <h4 className="truncate text-sm font-bold text-slate-900">{owner.name}</h4>
                             <span className="whitespace-nowrap text-[9px] font-medium text-slate-400">
-                              {formatTimestamp(room.last_message_time || room.updated_at, locale, copy.justNow)}
+                              {formatTimestamp(session.updatedAt || session.createdAt, locale, copy.justNow)}
                             </span>
                           </div>
-                          <p className="truncate text-xs text-slate-500">{room.last_message || copy.defaultLastMessage}</p>
+                          <p className="truncate text-xs text-slate-500">{session.latestSnippet || copy.defaultLastMessage}</p>
                         </div>
                       </button>
                     );
@@ -487,14 +534,21 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                 ) : (
                   petFeed.map((item) => {
                     const isNotification = item.kind === 'notification';
-                    const CardTag = isNotification ? 'button' : 'article';
-                    const cardProps = isNotification
+                    const isSession = item.kind === 'session';
+                    const CardTag = isNotification || isSession ? 'button' : 'article';
+                    const cardProps = isSession
                       ? {
                           type: 'button' as const,
-                          onClick: () => void handleNotificationClick(item.notificationId),
-                          'aria-label': copy.openNotification,
+                          onClick: () => onSelectChat({ owner: item.owner, runtimeSessionId: item.sessionId, runtimeSessionType: 'pet' }),
+                          'aria-label': `${copy.petTab}: ${item.title}`,
                         }
-                      : {};
+                      : isNotification
+                        ? {
+                            type: 'button' as const,
+                            onClick: () => void handleNotificationClick(item.notificationId),
+                            'aria-label': copy.openNotification,
+                          }
+                        : {};
 
                     return (
                       <CardTag
@@ -518,10 +572,13 @@ export default function Messages({ onSelectChat, onViewOwner, currentUser, userP
                             <p className="text-xs italic text-slate-400">“{item.raw}”</p>
                           </div>
                         )}
+                        {item.raw && item.kind === 'session' && (
+                          <div className="rounded-2xl bg-slate-50 p-3">
+                            <p className="text-xs italic text-slate-400">{item.raw}</p>
+                          </div>
+                        )}
 
-                        <div className="rounded-2xl border border-primary/5 bg-primary/5 p-4">
-                          <p className="text-sm font-medium leading-relaxed text-slate-700">{item.body}</p>
-                        </div>
+                        <p className="text-sm font-medium leading-relaxed text-slate-600">{item.body}</p>
                       </CardTag>
                     );
                   })

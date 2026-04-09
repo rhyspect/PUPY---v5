@@ -16,6 +16,7 @@ import breedingRoutes from './routes/breeding.js';
 import aiRoutes from './routes/ai.js';
 import adminRoutes from './routes/admin.js';
 import uploadRoutes from './routes/uploads.js';
+import appDataRoutes from './routes/appData.js';
 
 const app: Express = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +69,7 @@ app.use('/api/breeding', breedingRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/app', appDataRoutes);
 
 app.use((req: Request, res: Response) => {
   const locale = resolveRequestLocale(req);

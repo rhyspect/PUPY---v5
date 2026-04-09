@@ -71,6 +71,33 @@
   ],
   "marketOrders": [
     {
+      "id": "b3f90007-e4fe-4fc5-8e74-6fe6c8d355fd",
+      "orderNo": "PUPY-MO-1775701144535",
+      "userName": "苏栗",
+      "userEmail": "suli@pupy.app",
+      "petName": "奶油",
+      "sellerName": "爪住集市",
+      "city": "上海",
+      "status": "待审核",
+      "paymentStatus": "已付款",
+      "fulfillmentStatus": "待拣货",
+      "total": 188,
+      "quantity": 1,
+      "note": "高蛋白主粮 + 关节营养包 + 飞盘补货。",
+      "source": "主粮用品",
+      "items": [
+        {
+          "productId": "verify-food-001",
+          "title": "验证主粮订单",
+          "image": "",
+          "unitPrice": 188,
+          "quantity": 1
+        }
+      ],
+      "createdAt": "2026-04-09T02:19:04.535Z",
+      "updatedAt": "2026-04-09T02:19:04.535Z"
+    },
+    {
       "id": "427b0861-e739-4f0d-8a59-234c6381677a",
       "orderNo": "PUPY-MO-240999",
       "userName": "Rhys 运营测试",
@@ -351,6 +378,24 @@
   ],
   "walkOrders": [
     {
+      "id": "d02d72d5-74e9-4e8f-b757-37d3a94e5f07",
+      "orderNo": "PUPY-WK-1775701144713",
+      "userName": "苏栗",
+      "userEmail": "suli@pupy.app",
+      "petName": "奶油",
+      "walkerName": "验证遛犬师",
+      "city": "上海",
+      "serviceZone": "徐汇滨江",
+      "status": "待确认",
+      "reviewStatus": "待审核",
+      "scheduledAt": "周末 14:00",
+      "durationMinutes": 90,
+      "price": 168,
+      "note": "希望带上飞盘并拍几张互动照。",
+      "createdAt": "2026-04-09T02:19:04.713Z",
+      "updatedAt": "2026-04-09T02:19:04.713Z"
+    },
+    {
       "id": "walk-order-001",
       "orderNo": "PUPY-WK-240901",
       "userName": "苏栗",
@@ -460,6 +505,23 @@
     }
   ],
   "careBookings": [
+    {
+      "id": "1260ddde-d12f-4ea7-889a-f48dac4e6893",
+      "bookingNo": "PUPY-CR-1775701144436",
+      "userName": "苏栗",
+      "userEmail": "suli@pupy.app",
+      "petName": "奶油",
+      "merchantName": "爪住护理中心·验证店",
+      "city": "上海",
+      "serviceName": "验证洗护预约",
+      "status": "待商家确认",
+      "reviewStatus": "待审核",
+      "scheduledAt": "明天 18:30",
+      "price": 219,
+      "note": "周末上午档，需温和香氛。",
+      "createdAt": "2026-04-09T02:19:04.437Z",
+      "updatedAt": "2026-04-09T02:19:04.437Z"
+    },
     {
       "id": "care-booking-001",
       "bookingNo": "PUPY-CR-240901",
@@ -671,8 +733,8 @@
       ],
       "city": "上海",
       "status": "待运营复核",
-      "unreadCount": 1,
-      "latestSnippet": "后台新增会话验证成功。",
+      "unreadCount": 0,
+      "latestSnippet": "前端联调验证消息。",
       "messages": [
         {
           "id": "verify-chat-msg-1",
@@ -681,10 +743,18 @@
           "content": "这里是后台新建会话验证。",
           "createdAt": "2026-04-09T09:00:00.000Z",
           "moderationStatus": "正常"
+        },
+        {
+          "id": "1b0d0737-7b1e-4878-abf2-29e8bb473663",
+          "senderName": "苏栗",
+          "role": "owner",
+          "content": "前端联调验证消息。",
+          "createdAt": "2026-04-09T02:19:05.497Z",
+          "moderationStatus": "正常"
         }
       ],
       "createdAt": "2026-04-09T01:43:42.897Z",
-      "updatedAt": "2026-04-09T01:43:42.897Z"
+      "updatedAt": "2026-04-09T02:19:05.497Z"
     },
     {
       "id": "owner-chat-001",
@@ -931,5 +1001,5 @@
       "updatedAt": "2026-04-08T18:42:15.123Z"
     }
   ],
-  "updatedAt": "2026-04-09T01:46:09.980Z"
+  "updatedAt": "2026-04-09T02:19:05.497Z"
 }

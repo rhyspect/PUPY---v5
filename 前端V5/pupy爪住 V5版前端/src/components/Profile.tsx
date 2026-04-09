@@ -22,6 +22,7 @@ import {
   type MarketCartItem,
   type MarketOrder,
 } from '../utils/marketAssets';
+import { createMemberOrdersFromAssets } from '../utils/appDataAdapters';
 
 interface ProfileProps {
   userPet: Pet;
@@ -118,7 +119,7 @@ export default function Profile({
 
     setLoading(true);
     try {
-      const [userResult, petResult, diariesResult, matchesResult, productsResult, notificationsResult, prayersResult] =
+      const [userResult, petResult, diariesResult, matchesResult, productsResult, notificationsResult, prayersResult, memberAssetsResult] =
         await Promise.all([
           apiService.getCurrentUser(),
           apiService.getPetById(userPet.id),
@@ -127,6 +128,7 @@ export default function Profile({
           apiService.getSellerProducts(currentUser.id),
           apiService.getNotifications(),
           apiService.getPrayerRecords(1, 8),
+          apiService.getMemberAssets(),
         ]);
 
       const nextUser = userResult.data || currentUser;
@@ -138,6 +140,7 @@ export default function Profile({
       setSellerProducts(productsResult.data || []);
       setNotifications(notificationsResult.data || []);
       setPrayers(prayersResult.data || []);
+      setMarketOrders(createMemberOrdersFromAssets(memberAssetsResult.data));
       setEditForm({
         username: nextUser?.username || userPet.owner.name,
         signature: nextUser?.signature || userPet.owner.signature,
@@ -160,19 +163,31 @@ export default function Profile({
   }, [currentUser?.id, userPet.id]);
 
   useEffect(() => {
-    const refreshMarketAssets = () => {
+    const refreshMarketAssets = async () => {
       setCartItems(loadMarketCart());
+      if (currentUser?.id) {
+        try {
+          const result = await apiService.getMemberAssets();
+          setMarketOrders(createMemberOrdersFromAssets(result.data));
+          return;
+        } catch {
+          // Fall back to local asset cache when backend sync is unavailable.
+        }
+      }
       setMarketOrders(loadMarketOrders());
     };
 
-    refreshMarketAssets();
-    window.addEventListener('storage', refreshMarketAssets);
-    window.addEventListener(MARKET_ASSET_EVENT, refreshMarketAssets);
-    return () => {
-      window.removeEventListener('storage', refreshMarketAssets);
-      window.removeEventListener(MARKET_ASSET_EVENT, refreshMarketAssets);
+    void refreshMarketAssets();
+    const handleRefresh = () => {
+      void refreshMarketAssets();
     };
-  }, []);
+    window.addEventListener('storage', handleRefresh);
+    window.addEventListener(MARKET_ASSET_EVENT, handleRefresh);
+    return () => {
+      window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener(MARKET_ASSET_EVENT, handleRefresh);
+    };
+  }, [currentUser?.id]);
 
   const owner = useMemo(() => createOwnerFromApi(profileUser || currentUser || {}), [profileUser, currentUser]);
   const sourceUser = profileUser || currentUser;

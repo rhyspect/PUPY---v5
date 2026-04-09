@@ -1,8 +1,9 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { ApiPrayerRecord, ApiUser } from '../services/api';
+import type { ApiPrayerRecord, ApiUser, AppRuntimeChatSession } from '../services/api';
 import apiService from '../services/api';
 import type { Owner, Pet } from '../types';
+import { createOwnerFromRuntimeSession } from '../utils/appDataAdapters';
 import { getStoredLocale, type AppLocale } from '../utils/locale';
 
 interface ChatProps {
@@ -10,6 +11,8 @@ interface ChatProps {
   currentUser: ApiUser | null;
   userPet: Pet;
   chatRoomId?: string | null;
+  runtimeSessionId?: string | null;
+  runtimeSessionType?: 'owner' | 'pet' | null;
   onBack: () => void;
 }
 
@@ -106,13 +109,46 @@ function formatTimestamp(value: string | undefined, locale: AppLocale, fallback:
   }).format(date);
 }
 
-export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }: ChatProps) {
+function toOwnerMessages(session: AppRuntimeChatSession, currentUser: ApiUser | null, userPet: Pet): ChatMessageRecord[] {
+  const currentNames = [currentUser?.username, userPet.owner.name]
+    .map((item) => String(item || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  return session.messages.map((message) => {
+    const sentByCurrent = currentNames.includes(String(message.senderName || '').trim().toLowerCase());
+    return {
+      id: message.id,
+      chat_id: session.id,
+      sender_id: sentByCurrent ? currentUser?.id || 'current-user' : 'runtime-remote',
+      receiver_id: sentByCurrent ? 'runtime-remote' : currentUser?.id || 'current-user',
+      content: message.content,
+      created_at: message.createdAt,
+      is_read: true,
+    };
+  });
+}
+
+function toPetRecords(session: AppRuntimeChatSession): ApiPrayerRecord[] {
+  return session.messages.map((message) => ({
+    id: message.id,
+    user_id: session.id,
+    pet_id: session.id,
+    prayer_text: `${message.senderName}：${message.content}`,
+    ai_response: message.role === 'system' ? message.content : undefined,
+    sentiment: message.moderationStatus,
+    created_at: message.createdAt,
+  }));
+}
+
+export default function Chat({ owner, currentUser, userPet, chatRoomId, runtimeSessionId, runtimeSessionType, onBack }: ChatProps) {
   const locale = getStoredLocale();
   const copy = useMemo(() => copyByLocale[locale], [locale]);
-  const [chatMode, setChatMode] = useState<'owner' | 'pet'>('owner');
+  const [chatMode, setChatMode] = useState<'owner' | 'pet'>(runtimeSessionType === 'pet' ? 'pet' : 'owner');
   const [message, setMessage] = useState('');
   const [showOwnerProfile, setShowOwnerProfile] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(chatRoomId || null);
+  const [activeRuntimeOwnerSession, setActiveRuntimeOwnerSession] = useState<AppRuntimeChatSession | null>(null);
+  const [activePetSession, setActivePetSession] = useState<AppRuntimeChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
   const [prayers, setPrayers] = useState<ApiPrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,24 +160,53 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
   }, [chatRoomId]);
 
   useEffect(() => {
+    if (runtimeSessionType === 'pet') {
+      setChatMode('pet');
+    }
+  }, [runtimeSessionType]);
+
+  useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
       try {
+        let ownerSession: AppRuntimeChatSession | null = null;
+        if (runtimeSessionId) {
+          const runtimeSessionResult = await apiService.getAppChatSession(runtimeSessionId);
+          ownerSession = runtimeSessionResult.data || null;
+        } else if (owner?.name && currentUser?.id) {
+          const ensuredResult = await apiService.ensureOwnerChatSession({
+            counterpartName: owner.name,
+            counterpartCity: owner.residentCity,
+          });
+          ownerSession = ensuredResult.data || null;
+        }
+
         let nextRoomId = chatRoomId || null;
-        if (!nextRoomId && owner?.id && currentUser?.id) {
+        if (!ownerSession && !nextRoomId && owner?.id && currentUser?.id) {
           const roomResult = await apiService.getOrCreateChatRoom(owner.id);
           nextRoomId = roomResult.data?.id || null;
           setActiveRoomId(nextRoomId);
         }
 
-        const [messagesResult, prayersResult] = await Promise.all([
-          nextRoomId ? apiService.getChatMessages(nextRoomId, 1, 50) : Promise.resolve({ success: true, data: [] }),
+        const [petSessionsResult, ownerMessagesResult, prayersResult] = await Promise.all([
+          currentUser?.id ? apiService.getAppChatSessions('pet') : Promise.resolve({ success: true, data: [] }),
+          ownerSession
+            ? Promise.resolve({ success: true, data: toOwnerMessages(ownerSession, currentUser, userPet) })
+            : nextRoomId
+              ? apiService.getChatMessages(nextRoomId, 1, 50)
+              : Promise.resolve({ success: true, data: [] }),
           currentUser?.id ? apiService.getPrayerRecords(1, 12) : Promise.resolve({ success: true, data: [] }),
         ]);
 
-        setMessages((messagesResult.data || []) as ChatMessageRecord[]);
-        setPrayers((prayersResult.data || []) as ApiPrayerRecord[]);
+        const nextPetSession = runtimeSessionType === 'pet'
+          ? (runtimeSessionId && ownerSession?.type === 'pet' ? ownerSession : petSessionsResult.data?.find((item) => item.id === runtimeSessionId) || petSessionsResult.data?.[0] || null)
+          : petSessionsResult.data?.[0] || null;
+
+        setActiveRuntimeOwnerSession(ownerSession && ownerSession.type === 'owner' ? ownerSession : null);
+        setMessages((ownerMessagesResult.data || []) as ChatMessageRecord[]);
+        setActivePetSession(nextPetSession || null);
+        setPrayers(nextPetSession ? toPetRecords(nextPetSession) : ((prayersResult.data || []) as ApiPrayerRecord[]));
       } catch (requestError) {
         setError(requestError instanceof Error ? requestError.message : copy.loadFailed);
       } finally {
@@ -150,14 +215,24 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
     };
 
     void loadData();
-  }, [chatRoomId, copy.loadFailed, currentUser?.id, owner?.id]);
+  }, [chatRoomId, copy.loadFailed, currentUser?.id, owner?.id, owner?.name, owner?.residentCity, runtimeSessionId, runtimeSessionType, userPet]);
+
+  const galleryOwner = useMemo(() => {
+    if (chatMode === 'pet' && activePetSession) {
+      return createOwnerFromRuntimeSession(activePetSession);
+    }
+    if (activeRuntimeOwnerSession) {
+      return createOwnerFromRuntimeSession(activeRuntimeOwnerSession);
+    }
+    return owner;
+  }, [activePetSession, activeRuntimeOwnerSession, chatMode, owner]);
 
   const gallery = useMemo(() => {
-    if (owner?.photos?.length) {
-      return owner.photos;
+    if (galleryOwner?.photos?.length) {
+      return galleryOwner.photos;
     }
-    return owner?.avatar ? [owner.avatar] : [];
-  }, [owner]);
+    return galleryOwner?.avatar ? [galleryOwner.avatar] : [];
+  }, [galleryOwner]);
 
   const handleSend = async () => {
     const value = message.trim();
@@ -167,19 +242,43 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
     setError(null);
     try {
       if (chatMode === 'pet') {
-        const result = await apiService.createPrayer(userPet.id, value);
-        if (result.data) {
-          setPrayers((prev) => [result.data as ApiPrayerRecord, ...prev]);
+        if (activePetSession) {
+          const result = await apiService.sendAppChatMessage(activePetSession.id, {
+            content: value,
+            role: 'pet',
+            senderName: userPet.name,
+          });
+          if (result.data) {
+            setActivePetSession(result.data);
+            setPrayers(toPetRecords(result.data));
+          }
+        } else {
+          const result = await apiService.createPrayer(userPet.id, value);
+          if (result.data) {
+            setPrayers((prev) => [result.data as ApiPrayerRecord, ...prev]);
+          }
         }
       } else {
-        if (!activeRoomId || !owner?.id) {
-          setError(copy.roomUnavailable);
-          return;
-        }
+        if (activeRuntimeOwnerSession) {
+          const result = await apiService.sendAppChatMessage(activeRuntimeOwnerSession.id, {
+            content: value,
+            role: 'owner',
+            senderName: currentUser?.username || userPet.owner.name,
+          });
+          if (result.data) {
+            setActiveRuntimeOwnerSession(result.data);
+            setMessages(toOwnerMessages(result.data, currentUser, userPet));
+          }
+        } else {
+          if (!activeRoomId || !owner?.id) {
+            setError(copy.roomUnavailable);
+            return;
+          }
 
-        const result = await apiService.sendMessage(activeRoomId, owner.id, value);
-        if (result.data) {
-          setMessages((prev) => [...prev, result.data as ChatMessageRecord]);
+          const result = await apiService.sendMessage(activeRoomId, owner.id, value);
+          if (result.data) {
+            setMessages((prev) => [...prev, result.data as ChatMessageRecord]);
+          }
         }
       }
       setMessage('');
@@ -190,10 +289,10 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
     }
   };
 
-  const ownerMessagesReady = Boolean(activeRoomId && owner?.id);
-  const companionAvatar = owner?.avatar || userPet.owner.avatar;
-  const companionName = owner?.name || copy.waitingRoom;
-  const companionCity = owner?.residentCity || copy.roomTag;
+  const ownerMessagesReady = Boolean(activeRuntimeOwnerSession || (activeRoomId && owner?.id));
+  const companionAvatar = galleryOwner?.avatar || userPet.owner.avatar;
+  const companionName = galleryOwner?.name || copy.waitingRoom;
+  const companionCity = galleryOwner?.residentCity || copy.roomTag;
   const petPlaceholder =
     locale === 'zh-CN'
       ? `${copy.petPlaceholderPrefix}${userPet.name}${copy.petPlaceholderSuffix}`
@@ -213,10 +312,10 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
           </button>
           <button
             type="button"
-            onClick={() => owner && setShowOwnerProfile(true)}
-            disabled={!owner}
+            onClick={() => galleryOwner && setShowOwnerProfile(true)}
+            disabled={!galleryOwner}
             className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed disabled:opacity-75"
-            aria-label={owner ? `${copy.openProfile}: ${owner.name}` : copy.profileFallback}
+            aria-label={galleryOwner ? `${copy.openProfile}: ${galleryOwner.name}` : copy.profileFallback}
           >
             <div className="relative shrink-0">
               <img src={companionAvatar} className="h-12 w-12 rounded-full border-2 border-primary/20 object-cover shadow-sm" alt={companionName} referrerPolicy="no-referrer" />
@@ -346,7 +445,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
       </footer>
 
       <AnimatePresence>
-        {showOwnerProfile && owner && (
+        {showOwnerProfile && galleryOwner && (
           <div className="fixed inset-0 z-[200] flex items-end justify-center">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowOwnerProfile(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full max-w-md overflow-hidden rounded-t-[3rem] bg-white shadow-2xl" style={{ maxHeight: '90vh' }}>
@@ -354,7 +453,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
                 <div className="relative h-[45vh] bg-slate-100">
                   <div className="flex h-full snap-x snap-mandatory overflow-x-auto no-scrollbar">
                     {gallery.map((photo, index) => (
-                      <img key={index} src={photo} className="h-full w-full shrink-0 snap-center object-cover" alt={`${owner.name} ${copy.openProfile} ${index + 1}`} referrerPolicy="no-referrer" />
+                      <img key={index} src={photo} className="h-full w-full shrink-0 snap-center object-cover" alt={`${galleryOwner.name} ${copy.openProfile} ${index + 1}`} referrerPolicy="no-referrer" />
                     ))}
                   </div>
                   <div className="absolute left-6 right-6 top-6 flex items-center justify-between">
@@ -370,27 +469,27 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
                 <div className="space-y-8 p-8">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-3xl font-black italic tracking-tight text-slate-900">{owner.name}</h2>
-                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">{owner.mbti}</span>
+                      <h2 className="text-3xl font-black italic tracking-tight text-slate-900">{galleryOwner.name}</h2>
+                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary">{galleryOwner.mbti}</span>
                     </div>
-                    <p className="text-sm font-medium text-slate-400">{owner.signature}</p>
+                    <p className="text-sm font-medium text-slate-400">{galleryOwner.signature}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.basicInfo}</p>
-                      <p className="font-bold text-slate-900">{owner.gender} · {owner.age}</p>
+                      <p className="font-bold text-slate-900">{galleryOwner.gender} · {galleryOwner.age}</p>
                     </div>
                     <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.residentCity}</p>
-                      <p className="font-bold text-slate-900">{owner.residentCity}</p>
+                      <p className="font-bold text-slate-900">{galleryOwner.residentCity}</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <h4 className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.frequentCities}</h4>
                     <div className="flex flex-wrap gap-2">
-                      {owner.frequentCities.length ? owner.frequentCities.map((city) => (
+                      {galleryOwner.frequentCities.length ? galleryOwner.frequentCities.map((city) => (
                         <span key={city} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-xs font-black tracking-wide text-slate-600">{city}</span>
                       )) : <span className="text-sm text-slate-400">{copy.notFilled}</span>}
                     </div>
@@ -399,7 +498,7 @@ export default function Chat({ owner, currentUser, userPet, chatRoomId, onBack }
                   <div className="space-y-4">
                     <h4 className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400">{copy.hobbies}</h4>
                     <div className="flex flex-wrap gap-2">
-                      {owner.hobbies.length ? owner.hobbies.map((hobby) => (
+                      {galleryOwner.hobbies.length ? galleryOwner.hobbies.map((hobby) => (
                         <span key={hobby} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs font-black tracking-wide text-emerald-600">{hobby}</span>
                       )) : <span className="text-sm text-slate-400">{copy.notFilled}</span>}
                     </div>

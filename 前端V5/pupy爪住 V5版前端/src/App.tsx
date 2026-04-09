@@ -70,6 +70,8 @@ export default function App() {
   const [selectedOwner, setSelectedOwner] = useState<Owner | null>(null);
   const [activeChatOwner, setActiveChatOwner] = useState<Owner | null>(null);
   const [activeChatRoomId, setActiveChatRoomId] = useState<string | null>(null);
+  const [activeRuntimeChatSessionId, setActiveRuntimeChatSessionId] = useState<string | null>(null);
+  const [activeRuntimeChatMode, setActiveRuntimeChatMode] = useState<'owner' | 'pet' | null>(null);
   const [isDigitalTwinCreated, setIsDigitalTwinCreated] = useState(false);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [optimisticMatches, setOptimisticMatches] = useState<ApiMatchRecord[]>([]);
@@ -240,6 +242,8 @@ export default function App() {
       setSelectedOwner(null);
       setActiveChatOwner(null);
       setActiveChatRoomId(null);
+      setActiveRuntimeChatSessionId(null);
+      setActiveRuntimeChatMode(null);
       setIsDigitalTwinCreated(false);
       setIsOnboarded(false);
       setCurrentScreen('home');
@@ -339,12 +343,12 @@ export default function App() {
           <motion.div key={currentScreen} initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 20 }} animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }} exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
             {currentScreen === 'home' && <Home onMatch={handleMatch} onViewOwner={setSelectedOwner} currentUser={currentUser} userPet={userPet} />}
             {currentScreen === 'tour' && <Tour userPet={userPet} onSelectRealm={() => openScreen('messages')} />}
-            {currentScreen === 'messages' && <Messages currentUser={currentUser} userPet={userPet} optimisticMatches={optimisticMatches} onSelectChat={(owner, roomId) => { setActiveChatOwner(owner || null); setActiveChatRoomId(roomId || null); openScreen('chat'); }} onViewOwner={setSelectedOwner} />}
-            {currentScreen === 'market' && <Market currentUser={currentUser} userPet={userPet} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); openScreen('chat'); }} />}
+            {currentScreen === 'messages' && <Messages currentUser={currentUser} userPet={userPet} optimisticMatches={optimisticMatches} onSelectChat={({ owner, chatRoomId, runtimeSessionId, runtimeSessionType }) => { setActiveChatOwner(owner || null); setActiveChatRoomId(chatRoomId || null); setActiveRuntimeChatSessionId(runtimeSessionId || null); setActiveRuntimeChatMode(runtimeSessionType || null); openScreen('chat'); }} onViewOwner={setSelectedOwner} />}
+            {currentScreen === 'market' && <Market currentUser={currentUser} userPet={userPet} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); setActiveRuntimeChatSessionId(null); setActiveRuntimeChatMode('owner'); openScreen('chat'); }} />}
             {currentScreen === 'profile' && <Profile userPet={userPet} currentUser={currentUser} isDigitalTwinCreated={isDigitalTwinCreated} onStartCreation={() => openScreen('creation')} onTwinCreated={() => setIsDigitalTwinCreated(true)} onProfileSync={handleProfileSync} />}
             {currentScreen === 'creation' && <Creation onComplete={() => { setIsDigitalTwinCreated(true); openScreen('profile'); }} />}
-            {currentScreen === 'chat' && <Chat owner={activeChatOwner} currentUser={currentUser} userPet={userPet} chatRoomId={activeChatRoomId} onBack={() => openScreen('messages')} />}
-            {currentScreen === 'breeding' && <Breeding onBack={() => openScreen('home')} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); openScreen('chat'); }} />}
+            {currentScreen === 'chat' && <Chat owner={activeChatOwner} currentUser={currentUser} userPet={userPet} chatRoomId={activeChatRoomId} runtimeSessionId={activeRuntimeChatSessionId} runtimeSessionType={activeRuntimeChatMode} onBack={() => openScreen('messages')} />}
+            {currentScreen === 'breeding' && <Breeding onBack={() => openScreen('home')} onChat={(owner) => { setActiveChatOwner(owner); setActiveChatRoomId(null); setActiveRuntimeChatSessionId(null); setActiveRuntimeChatMode('owner'); openScreen('chat'); }} />}
             {currentScreen === 'diary' && <Diary onBack={() => openScreen('home')} />}
             {currentScreen === 'prayer' && <AIPrayer onBack={() => openScreen('home')} />}
             {currentScreen === 'settings' && <Settings userPet={{ name: userPet.name, image: userPet.images?.[0], hasPet: userPet.hasPet }} currentUserEmail={currentUser?.email || null} onBack={() => openScreen('home')} onReset={handleReset} onOpenAdmin={openAdminScreen} onLocaleChange={handleLocaleChange} locale={locale} backendStatus={backendStatus} canOpenAdmin={canAccessAdmin} />}
@@ -439,7 +443,7 @@ export default function App() {
 
       <Suspense fallback={null}>
         <AnimatePresence>
-          {selectedOwner && <OwnerProfile owner={selectedOwner} onClose={() => setSelectedOwner(null)} onStartChat={() => { setActiveChatOwner(selectedOwner); setActiveChatRoomId(null); setSelectedOwner(null); openScreen('chat'); }} />}
+          {selectedOwner && <OwnerProfile owner={selectedOwner} onClose={() => setSelectedOwner(null)} onStartChat={() => { setActiveChatOwner(selectedOwner); setActiveChatRoomId(null); setActiveRuntimeChatSessionId(null); setActiveRuntimeChatMode('owner'); setSelectedOwner(null); openScreen('chat'); }} />}
         </AnimatePresence>
       </Suspense>
 
@@ -453,4 +457,3 @@ export default function App() {
     </div>
   );
 }
-

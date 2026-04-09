@@ -7,6 +7,7 @@ import type { Owner, Pet } from '../types';
 import { createOwnerFromApi } from '../utils/adapters';
 import BrandMark from './BrandMark';
 import {
+  MARKET_ASSET_EVENT,
   addMarketCartItem,
   createMarketOrder,
   formatAssetPrice,
@@ -18,6 +19,7 @@ import {
   type MarketCartItem,
   type MarketOrder,
 } from '../utils/marketAssets';
+import { createMemberOrdersFromAssets } from '../utils/appDataAdapters';
 
 interface MarketProps {
   onChat: (owner: Owner) => void;
@@ -255,8 +257,17 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
     }
   };
 
-  const refreshAssets = () => {
+  const refreshAssets = async () => {
     setCartItems(loadMarketCart());
+    if (currentUser?.id) {
+      try {
+        const result = await apiService.getMemberAssets();
+        setOrders(createMemberOrdersFromAssets(result.data));
+        return;
+      } catch {
+        // Fall back to local demo assets when backend member assets are unavailable.
+      }
+    }
     setOrders(loadMarketOrders());
   };
 
@@ -269,14 +280,17 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    refreshAssets();
-    window.addEventListener('storage', refreshAssets);
-    window.addEventListener('pupy-market-assets-updated', refreshAssets);
-    return () => {
-      window.removeEventListener('storage', refreshAssets);
-      window.removeEventListener('pupy-market-assets-updated', refreshAssets);
+    void refreshAssets();
+    const handleRefresh = () => {
+      void refreshAssets();
     };
-  }, []);
+    window.addEventListener('storage', handleRefresh);
+    window.addEventListener(MARKET_ASSET_EVENT, handleRefresh);
+    return () => {
+      window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener(MARKET_ASSET_EVENT, handleRefresh);
+    };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     setSelectedQuantity(1);
@@ -316,86 +330,214 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
     });
   };
 
-  const handleCheckoutSelected = (item: MarketCard) => {
-    const order = createMarketOrder({
-      kind: 'shopping',
-      title: item.title,
-      image: item.image,
-      sellerName: item.owner.name,
-      status: '已结算',
-      total: selectedTotal,
-      quantity: selectedQuantity,
-      note: '主粮用品直接购买',
-      items: [{
-        productId: item.id,
-        title: item.title,
-        image: item.image,
-        unitPrice: selectedPrice,
-        quantity: selectedQuantity,
-      }],
-    });
-    setOrders(loadMarketOrders());
-    showFeedback({
-      tone: 'success',
-      title: '结算完成',
-      body: `${order.title} 已生成订单，可在个人空间的会员资产中查看。`,
-    });
+  const handleCheckoutSelected = async (item: MarketCard) => {
+    try {
+      let orderTitle = item.title;
+      if (currentUser?.id) {
+        await apiService.createAppMarketOrder({
+          title: item.title,
+          sellerName: item.owner.name,
+          total: selectedTotal,
+          quantity: selectedQuantity,
+          note: '主粮用品直接购买',
+          source: '主粮用品',
+          items: [{
+            productId: item.id,
+            title: item.title,
+            image: item.image,
+            unitPrice: selectedPrice,
+            quantity: selectedQuantity,
+          }],
+        });
+        await refreshAssets();
+        window.dispatchEvent(new CustomEvent(MARKET_ASSET_EVENT));
+      } else {
+        const order = createMarketOrder({
+          kind: 'shopping',
+          title: item.title,
+          image: item.image,
+          sellerName: item.owner.name,
+          status: '已结算',
+          total: selectedTotal,
+          quantity: selectedQuantity,
+          note: '主粮用品直接购买',
+          items: [{
+            productId: item.id,
+            title: item.title,
+            image: item.image,
+            unitPrice: selectedPrice,
+            quantity: selectedQuantity,
+          }],
+        });
+        orderTitle = order.title;
+        setOrders(loadMarketOrders());
+      }
+      showFeedback({
+        tone: 'success',
+        title: '结算完成',
+        body: `${orderTitle} 已生成订单，可在个人空间的会员资产中查看。`,
+      });
+    } catch (error) {
+      showFeedback({
+        tone: 'error',
+        title: '结算失败',
+        body: error instanceof Error ? error.message : '当前订单暂时无法写入后台，请稍后再试。',
+      });
+    }
   };
 
-  const handleCheckoutCart = () => {
+  const handleCheckoutCart = async () => {
     if (!cartItems.length) return;
-    const order = createMarketOrder({
-      kind: 'shopping',
-      title: `购物车结算 ${cartItems.length} 款商品`,
-      image: cartItems[0].image,
-      sellerName: '爪住集市',
-      status: '已结算',
-      total: cartTotal,
-      quantity: cartCount,
-      note: '购物车合并结算',
-      items: cartItems.map((item) => ({
-        productId: item.productId,
-        title: item.title,
-        image: item.image,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-      })),
-    });
-    saveMarketCart([]);
-    setCartItems([]);
-    setOrders(loadMarketOrders());
-    showFeedback({
-      tone: 'success',
-      title: '购物车已结算',
-      body: `${order.quantity} 件商品已生成订单，可在会员资产中查看订单记录。`,
-    });
+    try {
+      if (currentUser?.id) {
+        await apiService.createAppMarketOrder({
+          title: `购物车结算 ${cartItems.length} 款商品`,
+          sellerName: '爪住集市',
+          total: cartTotal,
+          quantity: cartCount,
+          note: '购物车合并结算',
+          source: '主粮用品',
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            title: item.title,
+            image: item.image,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+          })),
+        });
+        await refreshAssets();
+        window.dispatchEvent(new CustomEvent(MARKET_ASSET_EVENT));
+      } else {
+        createMarketOrder({
+          kind: 'shopping',
+          title: `购物车结算 ${cartItems.length} 款商品`,
+          image: cartItems[0].image,
+          sellerName: '爪住集市',
+          status: '已结算',
+          total: cartTotal,
+          quantity: cartCount,
+          note: '购物车合并结算',
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            title: item.title,
+            image: item.image,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+          })),
+        });
+        setOrders(loadMarketOrders());
+      }
+      saveMarketCart([]);
+      setCartItems([]);
+      showFeedback({
+        tone: 'success',
+        title: '购物车已结算',
+        body: `${cartCount} 件商品已生成订单，可在会员资产中查看订单记录。`,
+      });
+    } catch (error) {
+      showFeedback({
+        tone: 'error',
+        title: '结算失败',
+        body: error instanceof Error ? error.message : '当前订单暂时无法写入后台，请稍后再试。',
+      });
+    }
   };
 
-  const handleBookCare = (item: MarketCard) => {
-    const order = createMarketOrder({
-      kind: 'booking',
-      title: item.title,
-      image: item.image,
-      sellerName: item.owner.name,
-      status: '待商家确认',
-      total: getItemPrice(item),
-      quantity: 1,
-      appointmentSlot: selectedSlot,
-      note: `${userPet.name} 的护理养护预约`,
-      items: [{
-        productId: item.id,
-        title: item.title,
-        image: item.image,
-        unitPrice: getItemPrice(item),
-        quantity: 1,
-      }],
-    });
-    setOrders(loadMarketOrders());
-    showFeedback({
-      tone: 'success',
-      title: '预约已提交',
-      body: `${order.appointmentSlot} 的护理预约已进入会员资产，等待商家确认。`,
-    });
+  const handleBookCare = async (item: MarketCard) => {
+    try {
+      if (currentUser?.id) {
+        await apiService.createAppCareBooking({
+          merchantName: item.owner.name,
+          serviceName: item.title,
+          scheduledAt: selectedSlot,
+          price: getItemPrice(item),
+          note: `${userPet.name} 的护理养护预约`,
+          city: item.owner.residentCity,
+        });
+        await refreshAssets();
+        window.dispatchEvent(new CustomEvent(MARKET_ASSET_EVENT));
+      } else {
+        createMarketOrder({
+          kind: 'booking',
+          title: item.title,
+          image: item.image,
+          sellerName: item.owner.name,
+          status: '待商家确认',
+          total: getItemPrice(item),
+          quantity: 1,
+          appointmentSlot: selectedSlot,
+          note: `${userPet.name} 的护理养护预约`,
+          items: [{
+            productId: item.id,
+            title: item.title,
+            image: item.image,
+            unitPrice: getItemPrice(item),
+            quantity: 1,
+          }],
+        });
+        setOrders(loadMarketOrders());
+      }
+      showFeedback({
+        tone: 'success',
+        title: '预约已提交',
+        body: `${selectedSlot} 的护理预约已进入会员资产，等待商家确认。`,
+      });
+    } catch (error) {
+      showFeedback({
+        tone: 'error',
+        title: '预约失败',
+        body: error instanceof Error ? error.message : '当前预约暂时无法写入后台，请稍后再试。',
+      });
+    }
+  };
+
+  const handleConfirmWalkService = async (item: MarketCard) => {
+    try {
+      if (currentUser?.id) {
+        await apiService.createAppWalkOrder({
+          walkerName: item.owner.name,
+          serviceZone: item.subtitle,
+          scheduledAt: selectedSlot,
+          durationMinutes: 120,
+          price: getItemPrice(item),
+          note: `${userPet.name} 的帮忙溜溜预约`,
+          city: item.owner.residentCity,
+        });
+        await refreshAssets();
+        window.dispatchEvent(new CustomEvent(MARKET_ASSET_EVENT));
+      } else {
+        createMarketOrder({
+          kind: 'booking',
+          title: `帮忙溜溜 · ${item.owner.name}`,
+          image: item.image,
+          sellerName: item.owner.name,
+          status: '待服务确认',
+          total: getItemPrice(item),
+          quantity: 1,
+          appointmentSlot: selectedSlot,
+          note: `${userPet.name} 的帮忙溜溜预约`,
+          items: [{
+            productId: item.id,
+            title: item.title,
+            image: item.image,
+            unitPrice: getItemPrice(item),
+            quantity: 1,
+          }],
+        });
+        setOrders(loadMarketOrders());
+      }
+      showFeedback({
+        tone: 'success',
+        title: '服务已确认',
+        body: '帮忙溜溜订单已经进入会员资产，等待服务者与后台审核确认。',
+      });
+    } catch (error) {
+      showFeedback({
+        tone: 'error',
+        title: '确认失败',
+        body: error instanceof Error ? error.message : '当前服务订单暂时无法写入后台，请稍后再试。',
+      });
+    }
   };
 
   const submitBreedingRequest = async () => {
@@ -535,7 +677,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
               </div>
             ))}
           </div>
-          <button type="button" onClick={handleCheckoutCart} className="w-full rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
+          <button type="button" onClick={() => void handleCheckoutCart()} className="w-full rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
             结算购物车 · {formatAssetPrice(cartTotal)}
           </button>
         </section>
@@ -832,7 +974,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                     <button type="button" onClick={() => onChat(selectedItem.owner)} className="rounded-[2rem] bg-slate-100 py-4 font-black text-slate-700">
                       联系客服
                     </button>
-                    <button type="button" onClick={() => handleBookCare(selectedItem)} className="rounded-[2rem] bg-amber-500 py-4 font-black text-white shadow-lg shadow-amber-200">
+                    <button type="button" onClick={() => void handleBookCare(selectedItem)} className="rounded-[2rem] bg-amber-500 py-4 font-black text-white shadow-lg shadow-amber-200">
                       确认预约
                     </button>
                   </>
@@ -841,7 +983,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                     <button type="button" onClick={() => handleAddToCart(selectedItem)} className="rounded-[2rem] bg-slate-100 py-4 font-black text-slate-700">
                       加入购物车
                     </button>
-                    <button type="button" onClick={() => handleCheckoutSelected(selectedItem)} className="rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
+                    <button type="button" onClick={() => void handleCheckoutSelected(selectedItem)} className="rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
                       立即结算
                     </button>
                   </>
@@ -850,7 +992,7 @@ export default function Market({ onChat, currentUser, userPet }: MarketProps) {
                     <button type="button" onClick={() => onChat(selectedItem.owner)} className="rounded-[2rem] bg-slate-100 py-4 font-black text-slate-700">
                       私讯咨询
                     </button>
-                    <button type="button" onClick={() => onChat(selectedItem.owner)} className="rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
+                    <button type="button" onClick={() => void handleConfirmWalkService(selectedItem)} className="rounded-[2rem] bg-primary py-4 font-black text-white shadow-lg shadow-primary/20">
                       确认服务
                     </button>
                   </>
