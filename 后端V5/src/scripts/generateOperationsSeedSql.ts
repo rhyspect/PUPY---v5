@@ -25,8 +25,43 @@ function sqlNumber(value: number | string | null | undefined) {
   return Number.isFinite(next) ? String(next) : 'NULL';
 }
 
-function sqlTimestamp(value: string | null | undefined) {
-  return value ? sqlString(value) : 'CURRENT_TIMESTAMP';
+function resolveHumanTimestamp(value: string | null | undefined) {
+  const raw = normalizeText(value);
+  if (!raw) return null;
+
+  const parsed = Date.parse(raw);
+  if (Number.isFinite(parsed)) {
+    return new Date(parsed).toISOString();
+  }
+
+  const explicitTimeMatch = raw.match(/^(今天|明天|后天|周末)\s*(\d{1,2}):(\d{2})$/);
+  if (!explicitTimeMatch) return null;
+
+  const [, label, hourText, minuteText] = explicitTimeMatch;
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+  const next = new Date();
+  next.setSeconds(0, 0);
+
+  if (label === '明天') {
+    next.setDate(next.getDate() + 1);
+  } else if (label === '后天') {
+    next.setDate(next.getDate() + 2);
+  } else if (label === '周末') {
+    const day = next.getDay();
+    const daysUntilSaturday = (6 - day + 7) % 7 || 7;
+    next.setDate(next.getDate() + daysUntilSaturday);
+  }
+
+  next.setHours(hour, minute, 0, 0);
+  return next.toISOString();
+}
+
+function sqlTimestamp(value: string | null | undefined, fallback?: string | null | undefined) {
+  const resolved = resolveHumanTimestamp(value) || resolveHumanTimestamp(fallback);
+  return resolved ? sqlString(resolved) : 'CURRENT_TIMESTAMP';
 }
 
 function normalizeText(value: unknown) {
@@ -163,6 +198,7 @@ async function main() {
       userName: order.userName,
       userEmail: order.userEmail,
       petName: order.petName,
+      scheduledLabel: resolveHumanTimestamp(order.scheduledAt) ? '' : order.scheduledAt,
     });
 
     walkOrderRows.push(`(
@@ -175,7 +211,7 @@ async function main() {
     ${sqlString(order.serviceZone)},
     ${sqlString(order.status)},
     ${sqlString(order.reviewStatus)},
-    ${sqlTimestamp(order.scheduledAt)},
+    ${sqlTimestamp(order.scheduledAt, order.createdAt)},
     ${sqlNumber(order.durationMinutes)},
     ${sqlNumber(order.price)},
     ${sqlString(note)},
@@ -190,6 +226,7 @@ async function main() {
       userName: booking.userName,
       userEmail: booking.userEmail,
       petName: booking.petName,
+      scheduledLabel: resolveHumanTimestamp(booking.scheduledAt) ? '' : booking.scheduledAt,
     });
 
     careBookingRows.push(`(
@@ -202,7 +239,7 @@ async function main() {
     ${sqlString(booking.serviceName)},
     ${sqlString(booking.status)},
     ${sqlString(booking.reviewStatus)},
-    ${sqlTimestamp(booking.scheduledAt)},
+    ${sqlTimestamp(booking.scheduledAt, booking.createdAt)},
     ${sqlNumber(booking.price)},
     ${sqlString(note)},
     ${sqlTimestamp(booking.createdAt)},

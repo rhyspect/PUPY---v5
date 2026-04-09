@@ -1,5 +1,5 @@
 -- PUPY operations seed
--- Generated at: 2026-04-09T12:22:16.042Z
+-- Generated at: 2026-04-09T12:51:28.560Z
 -- Source: 后端V5/data/admin-runtime.json
 -- Purpose: 在 PostgREST schema cache 尚未及时刷新的情况下，直接通过 SQL Editor 把运营样本数据写入新表。
 
@@ -450,7 +450,7 @@ INSERT INTO public.walk_orders (
     '徐汇滨江',
     '待确认',
     '待审核',
-    '周末 14:00',
+    '2026-04-11T06:00:00.000Z',
     90,
     168,
     '__PUPY_META__:eyJ1c2VyTmFtZSI6IuiLj+aglyIsInVzZXJFbWFpbCI6InN1bGlAcHVweS5hcHAiLCJwZXROYW1lIjoi5aW25rK5In0=
@@ -631,7 +631,7 @@ INSERT INTO public.care_bookings (
     '验证洗护预约',
     '待商家确认',
     '待审核',
-    '明天 18:30',
+    '2026-04-10T10:30:00.000Z',
     219,
     '__PUPY_META__:eyJ1c2VyTmFtZSI6IuiLj+aglyIsInVzZXJFbWFpbCI6InN1bGlAcHVweS5hcHAiLCJwZXROYW1lIjoi5aW25rK5In0=
 周末上午档，需温和香氛。',
