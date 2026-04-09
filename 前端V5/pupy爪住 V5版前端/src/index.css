@@ -4,10 +4,10 @@
   --font-headline: "SF Pro Display", "PingFang SC", "Helvetica Neue", "Noto Sans SC", sans-serif;
   --font-body: "SF Pro Text", "PingFang SC", "Helvetica Neue", "Noto Sans SC", sans-serif;
 
-  --color-primary: #17684d;
-  --color-primary-dim: #005b41;
-  --color-primary-container: #affbd8;
-  --color-on-primary-container: #0f6348;
+  --color-primary: #a45a33;
+  --color-primary-dim: #7d4022;
+  --color-primary-container: #fde4d3;
+  --color-on-primary-container: #7b3c1d;
 
   --color-brand-amber: #f28d2d;
   --color-brand-peach: #f5b060;
@@ -15,18 +15,18 @@
   --color-brand-rose: #d97e98;
   --color-brand-cream: #fff4eb;
 
-  --color-secondary: #725631;
-  --color-secondary-container: #f7d1a1;
-  --color-on-secondary-container: #604622;
+  --color-secondary: #8a6959;
+  --color-secondary-container: #f8e5d7;
+  --color-on-secondary-container: #644637;
 
-  --color-tertiary: #735166;
-  --color-tertiary-container: #fdd0ea;
-  --color-on-tertiary-container: #654459;
+  --color-tertiary: #9a6377;
+  --color-tertiary-container: #f8dbe5;
+  --color-on-tertiary-container: #7b4158;
 
-  --color-surface: #eff4f1;
-  --color-surface-container-low: #eef5f1;
-  --color-surface-container-high: #dce7e1;
-  --color-surface-container-highest: #bed1c8;
+  --color-surface: #f7f1ed;
+  --color-surface-container-low: #fbf6f2;
+  --color-surface-container-high: #f0e3db;
+  --color-surface-container-highest: #e4d2c6;
   --color-surface-container-lowest: #ffffff;
 
   --color-on-surface: #0f172a;
@@ -44,11 +44,11 @@
     @apply bg-surface font-body text-on-surface antialiased leading-relaxed;
     min-height: 100vh;
     background:
-      radial-gradient(circle at 18% 8%, rgba(242, 141, 45, 0.12), transparent 18%),
-      radial-gradient(circle at 82% 10%, rgba(238, 155, 177, 0.12), transparent 18%),
-      radial-gradient(circle at top left, rgba(175, 251, 216, 0.8), transparent 26%),
-      radial-gradient(circle at top right, rgba(186, 230, 253, 0.55), transparent 30%),
-      linear-gradient(180deg, #f8fcfa 0%, #eef4f0 44%, #e7f0eb 100%);
+      radial-gradient(circle at 18% 8%, rgba(242, 141, 45, 0.18), transparent 18%),
+      radial-gradient(circle at 82% 10%, rgba(238, 155, 177, 0.18), transparent 18%),
+      radial-gradient(circle at top left, rgba(255, 244, 235, 0.92), transparent 26%),
+      radial-gradient(circle at top right, rgba(252, 229, 238, 0.68), transparent 30%),
+      linear-gradient(180deg, #fffaf6 0%, #f7f1ed 44%, #f2e8e1 100%);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -183,12 +183,12 @@
 
 .brand-logo-frame {
   background:
-    linear-gradient(135deg, rgba(255, 244, 235, 0.96), rgba(255, 255, 255, 0.92)),
-    linear-gradient(135deg, rgba(242, 141, 45, 0.14), rgba(238, 155, 177, 0.14));
-  border: 1px solid rgba(255, 255, 255, 0.9);
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.92), rgba(255, 244, 235, 0.86)),
+    linear-gradient(135deg, rgba(242, 141, 45, 0.12), rgba(238, 155, 177, 0.14));
+  border: 1px solid rgba(255, 255, 255, 0.92);
   box-shadow:
-    0 14px 34px rgba(242, 141, 45, 0.14),
-    0 10px 20px rgba(217, 126, 152, 0.12);
+    0 18px 42px rgba(242, 141, 45, 0.14),
+    0 12px 28px rgba(217, 126, 152, 0.12);
 }
 
 .brand-logo-frame::before {
@@ -207,11 +207,17 @@
   pointer-events: none;
 }
 
+.brand-logo-image {
+  filter: drop-shadow(0 10px 18px rgba(179, 92, 48, 0.16));
+}
+
 .brand-fullmark {
-  background: rgba(255, 255, 255, 0.9);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 243, 0.84)),
+    linear-gradient(135deg, rgba(242, 141, 45, 0.1), rgba(238, 155, 177, 0.12));
   border: 1px solid rgba(255, 255, 255, 0.92);
   box-shadow:
-    0 20px 40px rgba(242, 141, 45, 0.12),
+    0 22px 46px rgba(242, 141, 45, 0.12),
     0 18px 42px rgba(217, 126, 152, 0.1);
 }
 
@@ -224,16 +230,16 @@
 
 .brand-surface {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72)),
-    linear-gradient(135deg, rgba(242, 141, 45, 0.12), rgba(238, 155, 177, 0.12));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 251, 247, 0.78)),
+    linear-gradient(135deg, rgba(242, 141, 45, 0.12), rgba(238, 155, 177, 0.13));
   border: 1px solid rgba(255, 255, 255, 0.76);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 42px rgba(122, 81, 59, 0.1);
 }
 
 .brand-pill {
-  background: linear-gradient(135deg, rgba(242, 141, 45, 0.15), rgba(238, 155, 177, 0.16));
-  color: #945344;
-  border: 1px solid rgba(242, 141, 45, 0.16);
+  background: linear-gradient(135deg, rgba(242, 141, 45, 0.16), rgba(238, 155, 177, 0.18));
+  color: #965237;
+  border: 1px solid rgba(242, 141, 45, 0.2);
 }
 
 .brand-aura {

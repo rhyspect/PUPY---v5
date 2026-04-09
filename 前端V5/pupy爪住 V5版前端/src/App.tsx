@@ -312,7 +312,7 @@ export default function App() {
             <img src={userPet.images?.[0] || DEFAULT_OWNER_AVATAR} alt={userPet.name} className="w-full h-full object-cover" />
           </button>
           <div>
-            <BrandMark mode="lockup" size="sm" subtitle="爪住 · Pet Cloud" />
+            <BrandMark mode="word" size="sm" subtitle="爪住 · Pet Cloud" />
             <div className="flex items-center gap-2 mt-1">
               <span className={`w-2 h-2 rounded-full ${backendStatus.connected ? 'bg-emerald-500' : 'bg-amber-400'}`} />
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
